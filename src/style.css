@@ -36,7 +36,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
 .workspace {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(290px, 440px) minmax(0, 1fr);
+  grid-template-columns: minmax(290px, .95fr) minmax(0, 1.05fr);
   gap: clamp(26px, 6vw, 92px);
   align-items: start;
   padding-bottom: 32px;
@@ -61,7 +61,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
 .hero-art[data-tracking] .art-echo { opacity: .92; transform: translateX(var(--shift, 0px)); transition-duration: 65ms; }
 .hero-art[data-tracking] .art-echo:last-child { transform: translateX(calc(var(--shift, 0px) * -.55)); }
 
-.console { align-self: center; width: 100%; padding: 20px 0 60px; }
+.console { align-self: center; width: min(100%, 440px); padding: 20px 0 60px; }
 h1 { margin: 0; font: 670 clamp(28px, 4.2vw, 49px)/1.08 var(--mono); letter-spacing: -.087em; text-wrap: balance; }
 .intro { margin: 11px 0 24px; color: var(--muted); font-size: 14px; text-wrap: balance; }
 .command {
