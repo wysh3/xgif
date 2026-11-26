@@ -94,10 +94,11 @@
 
       <div class="viewer">
         <div class="hero-art" aria-hidden="true">
-          <picture id="art">
+          <picture id="art" hidden>
             <source media="(max-width: 680px)" srcset="/src/assets/signal-small.webp">
             <img src="/src/assets/signal.webp" alt="" width="736" height="1314" fetchpriority="high">
           </picture>
+          <canvas></canvas>
         </div>
         <section id="result" aria-labelledby="result-name" tabindex="-1" hidden>
           <div class="preview"><img id="preview" alt="Converted animation"></div>

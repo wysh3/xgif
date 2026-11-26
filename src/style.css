@@ -63,6 +63,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
 }
 .viewer { display: contents; }
 .hero-art {
+  --crop-x: .5;
+  --crop-y: .28;
   position: absolute;
   z-index: -1;
   inset: 0 0 0 auto;
@@ -70,17 +72,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
   overflow: hidden;
   isolation: isolate;
 }
-.hero-art picture { position: absolute; inset: 0; }
-.hero-art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
-.hero-art .art-echo {
-  opacity: 0;
-  pointer-events: none;
-  clip-path: polygon(0 calc(var(--scan) - 2%), 61% calc(var(--scan) - 2%), 61% calc(var(--scan) - .8%), 100% calc(var(--scan) - .8%), 100% calc(var(--scan) + 1.6%), 32% calc(var(--scan) + 1.6%), 32% var(--scan), 0 var(--scan));
-  transition: transform 280ms var(--ease), opacity 230ms ease-out;
-}
-.hero-art .art-echo:last-child { clip-path: inset(calc(var(--scan) + 3%) 0 calc(100% - var(--scan) - 4%) 18%); }
-.hero-art[data-tracking] .art-echo { opacity: .92; transform: translateX(var(--shift, 0px)); transition-duration: 65ms; }
-.hero-art[data-tracking] .art-echo:last-child { transform: translateX(calc(var(--shift, 0px) * -.55)); }
+.hero-art canvas { display: block; width: 100%; height: 100%; pointer-events: none; }
 
 .console { min-width: 0; width: min(100%, 422px); }
 h1 {
@@ -186,8 +178,7 @@ progress { flex: 1; min-width: 0; height: 5px; accent-color: var(--accent); }
   .workspace { padding: clamp(135px, 44svh, 430px) max(16px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) var(--gutter); }
   .console { margin-inline: auto; }
   h1 { font-size: clamp(49px, 14vw, 76px); margin-bottom: 14px; }
-  .hero-art { width: 100%; }
-  .hero-art img { object-position: 54% 19%; }
+  .hero-art { width: 100%; --crop-x: .54; --crop-y: .19; }
   .workspace:has(#result:not([hidden])) { grid-template-columns: minmax(0, 1fr); align-content: start; padding-top: 72px; }
   #result { justify-self: center; }
   dialog { inset: auto 0 0; width: 100%; margin: 0; padding-bottom: max(16px, env(safe-area-inset-bottom)); border-radius: 10px 10px 0 0; }
@@ -199,7 +190,6 @@ progress { flex: 1; min-width: 0; height: 5px; accent-color: var(--accent); }
   #remove-file { width: 35px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero-art .art-echo { display: none; }
   dialog[open] { animation: none; }
   button, .icon-button, .primary, .secondary { transition: none; }
   button:active:not(:disabled) { transform: none; }
