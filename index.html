@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0e0f12">
+  <meta name="theme-color" content="#000000">
   <meta name="description" content="Convert public X videos to GIFs and animated WebP stickers on your device.">
   <meta property="og:title" content="xgif — X video to GIF">
   <meta property="og:description" content="Make looping GIFs and animated stickers from X videos.">
@@ -39,12 +39,6 @@
     </header>
 
     <main class="workspace">
-      <div class="hero-art" aria-hidden="true">
-        <picture id="art">
-          <source media="(max-width: 560px)" srcset="/src/assets/loop-small.webp">
-          <img src="/src/assets/loop.webp" alt="" width="1200" height="800" fetchpriority="high">
-        </picture>
-      </div>
       <section class="console" aria-labelledby="title">
         <h1 id="title">X video to GIF</h1>
         <p class="intro">From a public X post or a video file.</p>
@@ -97,6 +91,12 @@
         </div>
       </section>
 
+      <div class="hero-art" aria-hidden="true">
+        <picture id="art">
+          <source media="(max-width: 680px)" srcset="/src/assets/signal-small.webp">
+          <img src="/src/assets/signal.webp" alt="" width="736" height="1314" fetchpriority="high">
+        </picture>
+      </div>
       <span class="drop-hint" aria-hidden="true">Drop video</span>
       <section id="result" aria-labelledby="result-name" tabindex="-1" hidden>
         <div class="preview"><img id="preview" alt="Converted animation"></div>
