@@ -1,7 +1,9 @@
 import './style.css';
+import { mountArtwork } from './artwork.js';
 
 const find = (id) => document.getElementById(id);
 const form = find('converter');
+const dropZone = form.closest('.studio');
 const controls = find('controls');
 const post = find('post');
 const filePicker = find('file');
@@ -26,6 +28,7 @@ const save = find('save');
 const resolver = import.meta.env.VITE_RESOLVER_URL
   || (import.meta.env.DEV ? '/api/resolve' : '');
 const maxBytes = 40 * 1024 * 1024;
+mountArtwork(form);
 let selectedFile;
 let resolvedPost;
 let output;
@@ -38,10 +41,22 @@ new IntersectionObserver(([entry]) => {
 }).observe(activity);
 
 function setOptions(open) {
+  if (optionsPanel.open === open) return;
+  if (open) {
+    const anchor = options.getBoundingClientRect();
+    optionsPanel.style.setProperty('--options-top', `${Math.round(anchor.bottom + 8)}px`);
+    optionsPanel.style.setProperty('--options-right', `${Math.round(window.innerWidth - anchor.right)}px`);
+    optionsPanel.showModal();
+  } else {
+    optionsPanel.close();
+  }
   options.setAttribute('aria-expanded', String(open));
-  optionsPanel.hidden = !open;
 }
-options.addEventListener('click', () => setOptions(optionsPanel.hidden));
+options.addEventListener('click', () => setOptions(true));
+find('close-options').addEventListener('click', () => setOptions(false));
+optionsPanel.addEventListener('close', () => {
+  options.setAttribute('aria-expanded', 'false');
+});
 
 function setTrim(open) {
   trim.setAttribute('aria-expanded', String(open));
@@ -133,19 +148,19 @@ filePicker.addEventListener('change', () => {
   filePicker.value = '';
   if (file) selectFile(file);
 });
-form.addEventListener('dragover', (event) => {
+dropZone.addEventListener('dragover', (event) => {
   if (!Array.from(event.dataTransfer.types).includes('Files')) return;
   event.preventDefault();
   event.dataTransfer.dropEffect = controls.disabled ? 'none' : 'copy';
-  form.toggleAttribute('data-drop', !controls.disabled);
+  dropZone.toggleAttribute('data-drop', !controls.disabled);
 });
-form.addEventListener('dragleave', (event) => {
-  if (!form.contains(event.relatedTarget)) form.removeAttribute('data-drop');
+dropZone.addEventListener('dragleave', (event) => {
+  if (!dropZone.contains(event.relatedTarget)) dropZone.removeAttribute('data-drop');
 });
-form.addEventListener('drop', (event) => {
+dropZone.addEventListener('drop', (event) => {
   if (!Array.from(event.dataTransfer.types).includes('Files')) return;
   event.preventDefault();
-  form.removeAttribute('data-drop');
+  dropZone.removeAttribute('data-drop');
   if (!controls.disabled && event.dataTransfer.files[0]) selectFile(event.dataTransfer.files[0]);
 });
 
