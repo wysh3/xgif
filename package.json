@@ -11,8 +11,7 @@
     "deploy:resolver": "cd worker/pages && wrangler pages deploy --branch main --force"
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "0.12.15",
-    "@fontsource-variable/newsreader": "5.3.0"
+    "@ffmpeg/ffmpeg": "0.12.15"
   },
   "devDependencies": {
     "@types/node": "22.20.7",

@@ -9,7 +9,9 @@ const clipPicker = find('clip-picker');
 const clip = find('clip');
 const status = find('status');
 const spinner = document.querySelector('.spinner');
-const paste = find('paste');
+const convert = find('convert');
+const options = find('toggle-options');
+const optionsPanel = find('options');
 const trim = find('toggle-trim');
 const trimOptions = find('trim-options');
 const fileName = find('file-name');
@@ -35,6 +37,12 @@ new IntersectionObserver(([entry]) => {
   activity.toggleAttribute('data-visible', entry.isIntersecting);
 }).observe(activity);
 
+function setOptions(open) {
+  options.setAttribute('aria-expanded', String(open));
+  optionsPanel.hidden = !open;
+}
+options.addEventListener('click', () => setOptions(optionsPanel.hidden));
+
 function setTrim(open) {
   trim.setAttribute('aria-expanded', String(open));
   trimOptions.hidden = !open;
@@ -42,7 +50,10 @@ function setTrim(open) {
 
 trim.addEventListener('click', () => setTrim(trimOptions.hidden));
 form.addEventListener('invalid', (event) => {
-  if (trimOptions.contains(event.target)) setTrim(true);
+  if (trimOptions.contains(event.target)) {
+    setOptions(true);
+    setTrim(true);
+  }
   if (event.target === post) reportPostError('Paste a complete link to a public X post.');
 }, true);
 
@@ -76,6 +87,10 @@ function resetSource() {
 }
 
 function updateSourceField() {
+  const hasSource = Boolean(selectedFile || post.value.trim());
+  find('convert-text').textContent = hasSource ? 'Convert' : 'Paste';
+  find('convert-icon').setAttribute('href', hasSource ? '#icon-arrow' : '#icon-paste');
+  convert.setAttribute('aria-label', hasSource ? 'Convert' : 'Paste & convert');
   fileName.textContent = selectedFile?.name ?? '';
   fileName.title = fileName.textContent;
   fileName.hidden = !selectedFile;
@@ -93,6 +108,8 @@ function selectFile(file) {
   selectedFile = file;
   post.value = '';
   updateSourceField();
+  setOptions(false);
+  convert.focus();
 }
 
 function clearFile() {
@@ -132,34 +149,30 @@ form.addEventListener('drop', (event) => {
   if (!controls.disabled && event.dataTransfer.files[0]) selectFile(event.dataTransfer.files[0]);
 });
 
-paste.addEventListener('click', async () => {
-  if (controls.disabled || readingClipboard) return;
+async function pasteLink() {
   readingClipboard = true;
-  paste.disabled = true;
+  convert.disabled = true;
   try {
     const value = (await navigator.clipboard.readText()).trim();
     if (!value) throw new Error('Empty clipboard');
     post.value = value;
     post.dispatchEvent(new Event('input'));
   } catch {
-    if (selectedFile) {
-      clearFile();
-      resetSource();
-    }
-    report('Paste the X link into the field, then select Convert.');
+    report('Paste your X link into the field to continue.');
     post.focus();
     return;
   } finally {
     readingClipboard = false;
-    paste.disabled = false;
+    convert.disabled = false;
   }
   if (!post.validity.valid) {
-    reportPostError('Copy a link to a public X post, then try Paste & convert again.');
+    reportPostError('Copy a link to a public X post, then try again.');
     post.focus();
     return;
   }
   form.requestSubmit();
-});
+}
+
 form.addEventListener('change', (event) => {
   if (event.target === clip || ['format', 'start', 'length'].includes(event.target.name || event.target.id)) {
     clearResult();
@@ -241,8 +254,7 @@ form.addEventListener('submit', async (event) => {
   clearResult();
   const value = post.value.trim();
   if (!selectedFile && !value) {
-    reportPostError('Paste a public X post link or open a video.');
-    post.focus();
+    await pasteLink();
     return;
   }
   const format = new FormData(form).get('format');
