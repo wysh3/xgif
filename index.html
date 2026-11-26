@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Turn an X video into a GIF or animated WebP on your device.">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#151518">
+  <meta name="theme-color" content="#17191b">
   <title>xgif — X video to GIF and animated stickers</title>
   <link rel="canonical" href="https://wysh3.github.io/xgif/">
   <meta property="og:type" content="website">
@@ -32,18 +32,28 @@
     <symbol id="icon-share" viewBox="0 0 24 24"><path d="M12 15V3m-4 4 4-4 4 4M7 10H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/></symbol>
     <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
     <symbol id="icon-save" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></symbol>
+    <symbol id="icon-source" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16"/></symbol>
   </svg>
 
   <main class="workspace">
-    <header class="intro">
-      <div class="identity">
-        <span class="brand-mark" aria-hidden="true"><svg class="icon"><use href="#icon-loop"/></svg></span>
-        <h1>xgif</h1>
-      </div>
-      <p>X videos to GIFs and animated stickers.</p>
-    </header>
+    <div class="collage" aria-hidden="true">
+      <div class="crop crop-left"><img src="./loop-study.webp" width="1200" height="800" alt=""></div>
+      <div class="crop crop-tall"><img src="./loop-study.webp" width="1200" height="800" alt=""></div>
+      <div class="crop crop-main"><img src="./loop-study.webp" width="1200" height="800" alt="" fetchpriority="high"></div>
+      <div class="crop crop-strip"><img src="./loop-study.webp" width="1200" height="800" alt=""></div>
+      <div class="crop crop-detail"><img src="./loop-study.webp" width="1200" height="800" alt=""></div>
+    </div>
 
     <div class="panel">
+      <header class="window-bar">
+        <div class="identity">
+          <span class="brand-mark" aria-hidden="true"><svg class="icon"><use href="#icon-loop"/></svg></span>
+          <h1>xgif<span class="visually-hidden"> — X videos to GIFs and animated stickers</span></h1>
+        </div>
+        <a class="source-icon-link" href="https://github.com/wysh3/xgif" aria-label="Source code on GitHub" title="Source code on GitHub">
+          <svg class="icon" aria-hidden="true"><use href="#icon-source"/></svg>
+        </a>
+      </header>
       <form id="converter">
         <fieldset id="controls">
           <div class="editor">
