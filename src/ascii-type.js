@@ -29,16 +29,18 @@ const font = {
 };
 
 const height = 7;
-const texture = '@#%#';
-
-function letterRows(text) {
+function letterRows(text, banner) {
+  const repeat = banner ? 2 : 1;
   const letters = [...text.toUpperCase()].map(character => font[character]);
-  return Array.from({ length: height }, (_, row) => letters.map((letter, index) => {
-    if (!letter) return '  ';
-    return Array.from({ length: 5 }, (_, column) => (
-      (letter[row] & (16 >> column)) ? texture[(row + index + column * 3) % texture.length] : ' '
-    )).join('');
-  }).join(' ').trimEnd()).join('\n');
+  const rows = Array.from({ length: height }, (_, row) => letters.map(letter => {
+    if (!letter) return ' '.repeat(2 * repeat);
+    return Array.from({ length: 5 }, (_, column) => {
+      const ink = letter[row] & (16 >> column) ? '#' : ' ';
+      return ink.repeat(repeat);
+    }).join('');
+  }).join(' '.repeat(repeat)).trimEnd());
+
+  return rows.flatMap(row => banner ? [row, row] : [row]).join('\n');
 }
 
 export function setAsciiText(element, text, displayText = text) {
@@ -49,6 +51,6 @@ export function setAsciiText(element, text, displayText = text) {
   const drawing = document.createElement('span');
   drawing.className = 'ascii-drawing';
   drawing.setAttribute('aria-hidden', 'true');
-  drawing.textContent = letterRows(displayText);
+  drawing.textContent = letterRows(displayText, element.parentElement?.id === 'title');
   element.replaceChildren(accessible, drawing);
 }
