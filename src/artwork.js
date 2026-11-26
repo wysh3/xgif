@@ -15,10 +15,12 @@ function grainTile() {
   return tile;
 }
 
-function sizedCanvas(canvas, ctx) {
+const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+
+function sizedCanvas(canvas, ctx, maxDpr = 2) {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const dpr = Math.min(devicePixelRatio || 1, maxDpr);
   const pixelWidth = Math.round(width * dpr);
   const pixelHeight = Math.round(height * dpr);
   if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
@@ -87,15 +89,59 @@ function heightField(ctx, pixels, width, height, turn) {
   ctx.putImageData(pixels, 0, 0);
 }
 
+function tear(ctx, buffer, width, height, cursor, strength) {
+  const focusX = clamp(cursor.x, width * .08, width * .92);
+  const focusY = clamp(cursor.y, height * .09, height * .91);
+  const reach = Math.max(60, width * (.28 + strength * .40));
+  for (let row = 0; row < 11; row++) {
+    const offset = row - 5;
+    const y = Math.round(clamp(focusY + offset * 5, 0, height - 2));
+    const length = Math.min(Math.max(2, row % 4 + 1), height - y);
+    const left = clamp(focusX - reach * (.35 + hash(row, 9) * .55), 0, width - 2);
+    const right = clamp(focusX + reach * (.25 + hash(3, row) * .48), left + 1, width);
+    const displacement = strength * (15 + hash(row, 3) * 66) * (row % 3 === 0 ? -1 : 1);
+    ctx.globalAlpha = strength * (.56 + hash(row, 19) * .42);
+    ctx.drawImage(buffer, left * buffer.width / width, y * buffer.height / height,
+      (right - left) * buffer.width / width, length * buffer.height / height,
+      left + displacement, y, right - left, length);
+    ctx.fillStyle = row % 2 ? '#ccd1b6' : '#8ea99f';
+    ctx.fillRect(left + displacement * 1.6, y, 5 + hash(row, 40) * 18, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function ghost(ctx, buffer, echo, age, field) {
+  const strength = Math.max(0, 1 - age / 860);
+  const x = echo.x + echo.dx * (age / 270);
+  const y = echo.y + echo.dy * (age / 400);
+  const size = 48 + hash(echo.seed, 5) * 123;
+  const sampleX = clamp(echo.x / field.width, 0, .74) * buffer.width;
+  const sampleY = clamp(echo.y / field.height, 0, .85) * buffer.height;
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = strength * .53;
+  ctx.drawImage(buffer, sampleX, sampleY, buffer.width * .22, 5, x + 15, y - 12, size, 12);
+  ctx.drawImage(buffer, sampleX, sampleY + 5, buffer.width * .25, 9, x - size * .48, y + 7, size, 20);
+  ctx.drawImage(buffer, sampleX + 8, sampleY, buffer.width * .12, 2, x + 31, y + 30, size * .54, 3);
+  ctx.globalAlpha = strength * .34;
+  ctx.strokeStyle = '#d0d5bc';
+  ctx.strokeRect(Math.round(x - size * .30) + .5, Math.round(y - 28) + .5, size * .77, 54);
+  ctx.fillStyle = '#c3be99';
+  ctx.fillRect(x + size * .55, y - 28, 4, 4);
+  ctx.fillRect(x - size * .39, y + 38, 21, 1);
+  ctx.globalAlpha = 1;
+}
+
 export function mountArtwork(form) {
   const art = document.getElementById('loop-art');
   const surface = document.getElementById('surface-texture');
   const scene = art.getContext('2d');
   const chrome = surface.getContext('2d');
+  const echoCanvas = document.getElementById('signal-echo');
+  const backdrop = echoCanvas.getContext('2d');
   const buffer = document.createElement('canvas');
   const copy = buffer.getContext('2d');
   let fieldPixels;
-  if (!scene || !chrome || !copy) return;
+  if (!scene || !chrome || !copy || !backdrop) return;
 
   const tile = grainTile();
   const sceneGrain = scene.createPattern(tile, 'repeat');
@@ -105,6 +151,12 @@ export function mountArtwork(form) {
   let turn = format.value === 'webp' ? .84 : -.12;
   let animation = 0;
   let sceneSize = sizedCanvas(art, scene);
+  let echoSize = sizedCanvas(echoCanvas, backdrop, 1);
+  let pointer;
+  let drift;
+  let modeChange;
+  let drawnTurn;
+  const echoes = [];
 
   function paintChrome() {
     const { width, height } = sizedCanvas(surface, chrome);
@@ -113,7 +165,7 @@ export function mountArtwork(form) {
     chrome.fillRect(0, 0, width, height);
   }
 
-  function paintScene() {
+  function paintScene(now = performance.now()) {
     const { width, height } = sceneSize;
     if (!width || !height) return;
     const fieldWidth = Math.min(280, Math.ceil(width * .54));
@@ -122,10 +174,21 @@ export function mountArtwork(form) {
       buffer.width = fieldWidth;
       buffer.height = fieldHeight;
       fieldPixels = copy.createImageData(fieldWidth, fieldHeight);
+      drawnTurn = undefined;
     }
-    heightField(copy, fieldPixels, fieldWidth, fieldHeight, turn);
+    if (drawnTurn !== turn) {
+      heightField(copy, fieldPixels, fieldWidth, fieldHeight, turn);
+      drawnTurn = turn;
+    }
     scene.imageSmoothingEnabled = false;
     scene.drawImage(buffer, 0, 0, width, height);
+    if (pointer && drift) {
+      const strength = clamp(1 - (now - pointer.time) / 710, 0, 1);
+      if (strength > 0) {
+        const rect = art.getBoundingClientRect();
+        tear(scene, buffer, width, height, { x: drift.x - rect.x, y: drift.y - rect.y }, strength);
+      }
+    }
 
     scene.strokeStyle = '#e1ddc550';
     scene.beginPath();
@@ -145,29 +208,78 @@ export function mountArtwork(form) {
     scene.globalAlpha = 1;
   }
 
+  function requestPaint() {
+    if (!animation) animation = requestAnimationFrame(update);
+  }
+
+  function update(now) {
+    animation = 0;
+    if (modeChange) {
+      const elapsed = clamp((now - modeChange.start) / 190, 0, 1);
+      turn = modeChange.from + (modeChange.to - modeChange.from) * (1 - (1 - elapsed) ** 3);
+      if (elapsed === 1) modeChange = undefined;
+    }
+    if (pointer && drift) {
+      drift.x += (pointer.x - drift.x) * .25;
+      drift.y += (pointer.y - drift.y) * .25;
+      if (now - pointer.time > 710) pointer = undefined;
+    }
+    while (echoes.length && now - echoes[0].time >= 860) echoes.shift();
+    paintScene(now);
+    backdrop.clearRect(0, 0, echoSize.width, echoSize.height);
+    if (fieldPixels && echoSize.width && echoSize.height) {
+      for (const echo of echoes) ghost(backdrop, buffer, echo, Math.max(0, now - echo.time), echoSize);
+    }
+    if (modeChange || pointer || echoes.length) requestPaint();
+  }
+
   new ResizeObserver(paintChrome).observe(surface);
   new ResizeObserver(() => {
     sceneSize = sizedCanvas(art, scene);
     paintScene();
   }).observe(art);
+  new ResizeObserver(() => {
+    echoSize = sizedCanvas(echoCanvas, backdrop, 1);
+    if (echoes.length) requestPaint();
+  }).observe(echoCanvas);
+
+  window.addEventListener('pointermove', (event) => {
+    if (reduceMotion.matches || event.pointerType === 'touch') return;
+    const x = event.clientX, y = event.clientY, time = performance.now();
+    const previous = echoes.at(-1);
+    if (!pointer) drift = { x, y };
+    pointer = { x, y, time };
+    if (!previous || Math.hypot(x - previous.x, y - previous.y) > 62) {
+      echoes.push({
+        x, y, time, seed: Math.round(x + y),
+        dx: previous ? clamp((x - previous.x) * .09, -17, 17) : -11,
+        dy: previous ? clamp((y - previous.y) * .11, -14, 14) : 7,
+      });
+      if (echoes.length > 7) echoes.shift();
+    }
+    requestPaint();
+  }, { passive: true });
+
+  reduceMotion.addEventListener('change', () => {
+    if (!reduceMotion.matches) return;
+    echoes.length = 0;
+    pointer = undefined;
+    if (modeChange) {
+      turn = modeChange.to;
+      modeChange = undefined;
+    }
+    requestPaint();
+  });
 
   form.addEventListener('change', (event) => {
     if (event.target.name !== 'format') return;
-    cancelAnimationFrame(animation);
     const target = format.value === 'webp' ? .84 : -.12;
-    if (reduceMotion.matches || art.getClientRects().length === 0) {
+    if (reduceMotion.matches || !sceneSize.width) {
       turn = target;
-      paintScene();
-      return;
+      modeChange = undefined;
+    } else {
+      modeChange = { start: performance.now(), from: turn, to: target };
     }
-    const start = performance.now();
-    const previous = turn;
-    function update(time) {
-      const elapsed = Math.min(1, (time - start) / 190);
-      turn = previous + (target - previous) * (1 - (1 - elapsed) ** 3);
-      paintScene();
-      if (elapsed < 1) animation = requestAnimationFrame(update);
-    }
-    animation = requestAnimationFrame(update);
+    requestPaint();
   });
 }

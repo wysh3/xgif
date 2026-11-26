@@ -28,7 +28,9 @@ button:disabled { cursor: wait; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 fieldset { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
 
+.signal-echo { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .workspace {
+  position: relative;
   width: min(100% - 48px, 736px);
   margin: clamp(44px, 12vh, 118px) auto 50px;
 }
@@ -265,6 +267,7 @@ h1 { margin: 0; font-size: 17px; font-weight: 660; line-height: 1; letter-spacin
   #convert span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .signal-echo { display: none; }
   .segments::before, #controls, .primary, .secondary, .quiet, .icon-button { transition: none; }
   .accessories, .result, .trim-fields, .spinner { animation: none; }
   .primary:active, .secondary:active { transform: none; }
