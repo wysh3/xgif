@@ -24,7 +24,7 @@ In a second terminal, run `npm run dev` and open the Vite URL. The local video p
 
 - **Share** appears where the device can hand the output file to its native share menu. **Copy** appears where the clipboard supports the exact animated file type. **Save file** is available on all supported browsers.
 - WebP stickers use a 512 × 512 transparent canvas and target WhatsApp’s 500 KB size limit. To send one as a native WhatsApp sticker, import the generated WebP using a compatible sticker app.
-- The browser loads a roughly 32 MB single-threaded FFmpeg engine on the first conversion. Source clips are limited to 40 MiB and outputs to 10 seconds.
+- The browser loads the pinned [single-threaded FFmpeg engine](https://github.com/ffmpegwasm/ffmpeg.wasm) from jsDelivr on the first conversion (roughly 32 MB uncompressed). Source clips are limited to 40 MiB and outputs to 10 seconds.
 - X lookup relies on its public embed endpoint, which can change or omit media. The local picker accepts a video without uploading it.
 
 `npm test` checks the resolver. `npm run build` creates the static site in `dist/`.

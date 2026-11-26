@@ -1,7 +1,6 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import coreURL from '@ffmpeg/core?url';
-import wasmURL from '@ffmpeg/core/wasm?url';
 
+const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
 const stickerLimit = 500_000;
 
 export async function convertClip(file, format, start, length, report) {
@@ -9,8 +8,8 @@ export async function convertClip(file, format, start, length, report) {
   try {
     report('Loading the video converter…');
     await engine.load({
-      coreURL: new URL(coreURL, window.location.href).href,
-      wasmURL: new URL(wasmURL, window.location.href).href,
+      coreURL: `${coreBase}/ffmpeg-core.js`,
+      wasmURL: `${coreBase}/ffmpeg-core.wasm`,
     });
     await engine.writeFile('input', new Uint8Array(await file.arrayBuffer()));
     const input = ['-ss', String(start), '-i', 'input', '-t', String(length), '-an', '-map', '0:v:0'];
