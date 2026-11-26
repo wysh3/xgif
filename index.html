@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Turn an X video into a GIF or animated WebP on your device.">
+  <meta name="theme-color" content="#171713">
+  <title>xgif — X video to GIF</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <a class="brand" href="./" aria-label="xgif home"><span class="brand-mark" aria-hidden="true">↻</span>xgif</a>
+    </header>
+    <section class="workspace" aria-labelledby="heading">
+      <header class="intro">
+        <h1 id="heading">Turn X videos<br>into GIFs<span>.</span></h1>
+        <p>Paste a public X link or choose a video. Make a GIF or animated sticker.</p>
+      </header>
+      <form id="converter">
+        <fieldset id="controls">
+          <div id="sources">
+            <label for="post">X post link</label>
+            <div class="input-group">
+              <input id="post" type="url" inputmode="url" spellcheck="false" autocomplete="off" placeholder="https://x.com/…/status/…">
+              <button id="paste" class="outline" type="button">Paste</button>
+            </div>
+            <div class="source-options">
+              <button id="choose-video" class="text-button" type="button">Choose a video</button>
+              <span id="file-name" hidden></span>
+              <input id="file" type="file" accept="video/*,.mov,.mkv" hidden>
+            </div>
+          </div>
+          <div id="clip-picker" hidden>
+            <label for="clip">Video in post</label>
+            <select id="clip"></select>
+          </div>
+          <fieldset class="formats">
+            <legend>Output format</legend>
+            <div class="format-options">
+              <label><input type="radio" name="format" value="gif" checked><span>GIF</span></label>
+              <label><input type="radio" name="format" value="webp"><span>Sticker · WebP</span></label>
+            </div>
+          </fieldset>
+          <details class="trim">
+            <summary>Trim clip</summary>
+            <div class="trim-fields">
+              <label>Start (seconds)<input id="start" type="number" min="0" step="0.1" value="0" required></label>
+              <label>Length (seconds)<input id="length" type="number" min="0.5" max="10" step="0.1" value="3" required></label>
+            </div>
+          </details>
+          <button id="convert" class="primary" type="submit">Convert <span aria-hidden="true">→</span></button>
+        </fieldset>
+      </form>
+      <p id="status" role="status" aria-live="polite" hidden></p>
+      <section id="result" class="result" aria-label="Conversion result" hidden>
+        <div class="preview"><img id="preview" alt="Converted animation"></div>
+        <div class="result-meta">
+          <strong id="result-name"></strong>
+          <span id="result-size"></span>
+        </div>
+        <div class="actions">
+          <button id="share" class="primary" type="button" hidden>Share</button>
+          <button id="copy" class="outline" type="button" hidden>Copy</button>
+          <a id="save" class="outline" download>Save file</a>
+        </div>
+        <p id="result-help" hidden></p>
+      </section>
+    </section>
+    <footer>Video conversion runs on your device.</footer>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
