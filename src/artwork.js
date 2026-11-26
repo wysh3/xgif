@@ -5,6 +5,7 @@ export function mountArtwork(picture) {
   const echoes = [];
 
   let point;
+  let previousX;
   let frame;
   let quiet;
 
@@ -27,8 +28,11 @@ export function mountArtwork(picture) {
 
     const x = (point.clientX - bounds.left) / bounds.width;
     const y = (point.clientY - bounds.top) / bounds.height;
+    const travel = point.clientX - (previousX ?? point.clientX);
+    const shift = Math.min(55, Math.max(-55, (x - .5) * 42 + travel * 1.15));
+    previousX = point.clientX;
     artwork.style.setProperty('--scan', `${Math.min(90, Math.max(5, y * 100))}%`);
-    artwork.style.setProperty('--shift', `${Math.round((x - .5) * 48)}px`);
+    artwork.style.setProperty('--shift', `${Math.round(shift)}px`);
     artwork.setAttribute('data-tracking', '');
   }
 
@@ -37,6 +41,7 @@ export function mountArtwork(picture) {
     if (frame !== undefined) cancelAnimationFrame(frame);
     frame = undefined;
     point = undefined;
+    previousX = undefined;
     artwork.removeAttribute('data-tracking');
   }
 

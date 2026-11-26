@@ -43,33 +43,30 @@
 
     <main class="workspace">
       <section class="console" aria-labelledby="title">
-        <h1 id="title">X video to GIF</h1>
+        <h1 id="title"><span>X video</span> <span>to GIF</span></h1>
         <form id="converter">
           <fieldset id="controls">
-            <label class="field-label" for="post">Source</label>
+            <label class="visually-hidden" for="post">X post link</label>
             <div class="command">
               <svg class="icon" aria-hidden="true"><use href="#link"/></svg>
               <input id="post" type="url" inputmode="url" placeholder="Paste an X post link" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="status">
               <span id="file-name" hidden></span>
               <button id="remove-file" class="icon-button" type="button" aria-label="Remove video" hidden><svg class="icon" aria-hidden="true"><use href="#close"/></svg></button>
+              <button id="convert" class="primary" type="submit" aria-label="Paste &amp; convert">
+                <span id="convert-text">Paste</span><svg class="icon" aria-hidden="true"><use href="#arrow"/></svg>
+              </button>
             </div>
-            <div class="format-row">
-              <span class="field-label" aria-hidden="true">Format</span>
+            <div class="toolbar action-row">
               <fieldset class="formats">
                 <legend class="visually-hidden">Output format</legend>
                 <label><input type="radio" name="format" value="gif" checked><span>GIF</span></label>
                 <label><input type="radio" name="format" value="webp"><span>Sticker</span></label>
               </fieldset>
-            </div>
-            <label id="clip-picker" class="clip-picker" hidden>Video in post <select id="clip"></select></label>
-            <div class="toolbar action-row">
               <button id="toggle-options" class="icon-button" type="button" aria-label="Options" title="Options" aria-haspopup="dialog" aria-expanded="false" aria-controls="options">
                 <svg class="icon" aria-hidden="true"><use href="#options-icon"/></svg>
               </button>
-              <button id="convert" class="primary" type="submit" aria-label="Paste &amp; convert">
-                <span id="convert-text">Paste</span><svg class="icon" aria-hidden="true"><use href="#arrow"/></svg>
-              </button>
             </div>
+            <label id="clip-picker" class="clip-picker" hidden>Video in post <select id="clip"></select></label>
 
             <dialog id="options" aria-labelledby="options-title" closedby="any">
               <header><h2 id="options-title">Options</h2><button id="close-options" class="secondary" type="button">Done</button></header>
