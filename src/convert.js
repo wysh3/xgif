@@ -1,4 +1,5 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { hasAnimatedWebPFrames } from './sticker.js';
 
 const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
 const stickerLimit = 500_000;
@@ -36,6 +37,9 @@ export async function convertClip(file, format, start, length, report) {
       if (code !== 0) throw new Error('Could not make a sticker from this clip. Check the file and trim settings.');
       const bytes = await engine.readFile('output.webp');
       if (bytes.length < 100) throw new Error('No frames found. Try an earlier start time.');
+      if (!hasAnimatedWebPFrames(bytes)) {
+        throw new Error('This selection did not produce an animated sticker. Try a longer or more active part of the video.');
+      }
       if (bytes.length <= stickerLimit) return new File([bytes], 'xgif-sticker.webp', { type: 'image/webp' });
     }
     throw new Error('The sticker is over 500 KB. Try a shorter clip.');

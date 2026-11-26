@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "dev:worker": "wrangler dev --port 8787",
+    "dev:worker": "cd worker/pages && wrangler pages dev --port 8787",
     "build": "vite build",
     "test": "node --test",
-    "deploy:worker": "wrangler deploy"
+    "deploy:resolver": "cd worker/pages && wrangler pages deploy --branch main --force"
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "0.12.15"
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "@fontsource-variable/newsreader": "5.3.0"
   },
   "devDependencies": {
     "@types/node": "22.20.7",

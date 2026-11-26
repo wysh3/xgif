@@ -8,6 +8,13 @@ const filePicker = find('file');
 const clipPicker = find('clip-picker');
 const clip = find('clip');
 const status = find('status');
+const spinner = document.querySelector('.spinner');
+const paste = find('paste');
+const trim = find('toggle-trim');
+const trimOptions = find('trim-options');
+const fileName = find('file-name');
+const removeFile = find('remove-file');
+const sourceIcon = find('source-icon');
 const result = find('result');
 const preview = find('preview');
 const share = find('share');
@@ -21,11 +28,33 @@ let selectedFile;
 let resolvedPost;
 let output;
 let previewURL;
+let readingClipboard = false;
+
+const activity = spinner.parentElement;
+new IntersectionObserver(([entry]) => {
+  activity.toggleAttribute('data-visible', entry.isIntersecting);
+}).observe(activity);
+
+function setTrim(open) {
+  trim.setAttribute('aria-expanded', String(open));
+  trimOptions.hidden = !open;
+}
+
+trim.addEventListener('click', () => setTrim(trimOptions.hidden));
+form.addEventListener('invalid', (event) => {
+  if (trimOptions.contains(event.target)) setTrim(true);
+  if (event.target === post) reportPostError('Paste a complete link to a public X post.');
+}, true);
 
 function report(message, error = false) {
-  status.hidden = !message;
+  spinner.hidden = !message || !controls.disabled || error;
   status.textContent = message;
   status.toggleAttribute('data-error', error);
+}
+
+function reportPostError(message) {
+  post.setAttribute('aria-invalid', 'true');
+  report(message, true);
 }
 
 function clearResult() {
@@ -38,6 +67,7 @@ function clearResult() {
 }
 
 function resetSource() {
+  post.removeAttribute('aria-invalid');
   resolvedPost = undefined;
   clip.replaceChildren();
   clipPicker.hidden = true;
@@ -45,35 +75,90 @@ function resetSource() {
   report('');
 }
 
+function updateSourceField() {
+  fileName.textContent = selectedFile?.name ?? '';
+  fileName.title = fileName.textContent;
+  fileName.hidden = !selectedFile;
+  removeFile.hidden = !selectedFile;
+  post.hidden = Boolean(selectedFile);
+  sourceIcon.setAttribute('href', selectedFile ? '#icon-folder' : '#icon-link');
+}
+
+function selectFile(file) {
+  if (!file.type.startsWith('video/') && !/\.(mp4|m4v|webm|mov|mkv|avi|mpeg|mpg|3gp|ogv)$/i.test(file.name)) {
+    report('Choose a video file to convert.', true);
+    return;
+  }
+  resetSource();
+  selectedFile = file;
+  post.value = '';
+  updateSourceField();
+}
+
 function clearFile() {
   selectedFile = undefined;
   filePicker.value = '';
-  find('file-name').hidden = true;
+  updateSourceField();
 }
 
 post.addEventListener('input', () => {
   clearFile();
   resetSource();
 });
+removeFile.addEventListener('click', () => {
+  clearFile();
+  resetSource();
+  post.focus();
+});
 find('choose-video').addEventListener('click', () => filePicker.click());
 filePicker.addEventListener('change', () => {
-  if (!filePicker.files.length) return;
-  resetSource();
-  selectedFile = filePicker.files[0];
-  post.value = '';
-  find('file-name').textContent = selectedFile.name;
-  find('file-name').hidden = false;
+  const file = filePicker.files[0];
+  filePicker.value = '';
+  if (file) selectFile(file);
 });
-find('paste').addEventListener('click', async () => {
+form.addEventListener('dragover', (event) => {
+  if (!Array.from(event.dataTransfer.types).includes('Files')) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = controls.disabled ? 'none' : 'copy';
+  form.toggleAttribute('data-drop', !controls.disabled);
+});
+form.addEventListener('dragleave', (event) => {
+  if (!form.contains(event.relatedTarget)) form.removeAttribute('data-drop');
+});
+form.addEventListener('drop', (event) => {
+  if (!Array.from(event.dataTransfer.types).includes('Files')) return;
+  event.preventDefault();
+  form.removeAttribute('data-drop');
+  if (!controls.disabled && event.dataTransfer.files[0]) selectFile(event.dataTransfer.files[0]);
+});
+
+paste.addEventListener('click', async () => {
+  if (controls.disabled || readingClipboard) return;
+  readingClipboard = true;
+  paste.disabled = true;
   try {
-    const value = await navigator.clipboard.readText();
-    if (!value.trim()) throw new Error('Empty clipboard');
-    post.value = value.trim();
+    const value = (await navigator.clipboard.readText()).trim();
+    if (!value) throw new Error('Empty clipboard');
+    post.value = value;
     post.dispatchEvent(new Event('input'));
   } catch {
-    report('Use your device’s Paste command in the link field.');
+    if (selectedFile) {
+      clearFile();
+      resetSource();
+    }
+    report('Paste the X link into the field, then select Convert.');
+    post.focus();
+    return;
+  } finally {
+    readingClipboard = false;
+    paste.disabled = false;
   }
-  post.focus();
+  if (!post.validity.valid) {
+    reportPostError('Copy a link to a public X post, then try Paste & convert again.');
+    post.focus();
+    return;
+  }
+  form.requestSubmit();
 });
 form.addEventListener('change', (event) => {
   if (event.target === clip || ['format', 'start', 'length'].includes(event.target.name || event.target.id)) {
@@ -91,6 +176,7 @@ async function resolvePost(value) {
   const response = await fetch(url, { signal: AbortSignal.timeout(12_000) });
   const data = await response.json().catch(() => null);
   if (!response.ok || !data?.videos?.length) {
+    if (response.status === 400) post.setAttribute('aria-invalid', 'true');
     throw new Error(data?.error || 'Could not look up this X link. Try again or choose a video.');
   }
   resolvedPost = { input: value, videos: data.videos };
@@ -135,23 +221,27 @@ function showOutput(file) {
   find('result-size').textContent = file.size >= 1_000_000
     ? `${(file.size / 1_000_000).toFixed(1)} MB`
     : `${Math.max(1, Math.round(file.size / 1000))} KB`;
-  share.hidden = !navigator.canShare?.({ files: [file] });
+  share.hidden = !(navigator.share && navigator.canShare?.({ files: [file] }));
   copy.hidden = !(navigator.clipboard?.write && window.ClipboardItem?.supports?.(file.type));
   const help = find('result-help');
   help.textContent = file.type === 'image/webp'
-    ? 'Use a compatible sticker app to import this as a native WhatsApp sticker.'
-    : '';
+    ? `${share.hidden ? 'Save' : 'Share or save'} the WebP file to keep it animated. Pasting the preview can produce a still. Use a compatible sticker app to import it into WhatsApp.`
+    : copy.hidden && share.hidden
+      ? 'Save the GIF to keep it animated. Copying the preview can paste a still image.'
+      : '';
   help.hidden = !help.textContent;
   result.hidden = false;
+  result.focus({ preventScroll: true });
+  result.scrollIntoView({ block: 'nearest' });
 }
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (controls.disabled) return;
+  if (controls.disabled || readingClipboard) return;
   clearResult();
   const value = post.value.trim();
   if (!selectedFile && !value) {
-    report('Paste a public X post link or choose a video.', true);
+    reportPostError('Paste a public X post link or open a video.');
     post.focus();
     return;
   }
@@ -159,6 +249,7 @@ form.addEventListener('submit', async (event) => {
   const start = find('start').valueAsNumber;
   const length = find('length').valueAsNumber;
   controls.disabled = true;
+  form.setAttribute('aria-busy', 'true');
   try {
     if (selectedFile?.size > maxBytes) throw new Error('This video exceeds 40 MB. Try a shorter source video.');
     const input = selectedFile || await readClip((await resolvePost(value)).url);
@@ -172,6 +263,7 @@ form.addEventListener('submit', async (event) => {
     report(message, true);
   } finally {
     controls.disabled = false;
+    form.removeAttribute('aria-busy');
   }
 });
 
@@ -187,7 +279,7 @@ copy.addEventListener('click', async () => {
   if (!output) return;
   try {
     await navigator.clipboard.write([new ClipboardItem({ [output.type]: output })]);
-    report('Copied the animation.');
+    report('Copied the animation file. The app you paste into decides how to display it.');
   } catch {
     report('Copy failed. Use Share when available, or save the file.', true);
   }
