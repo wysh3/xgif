@@ -21,6 +21,7 @@ export function mountArtwork(picture) {
   let previousX;
   let frame;
   let quiet;
+  let damage;
 
   function render() {
     const width = artwork.clientWidth;
@@ -29,6 +30,7 @@ export function mountArtwork(picture) {
     const ratio = Math.min(2, devicePixelRatio || 1);
     const source = image.currentSrc;
     if (layout?.width === width && layout.height === height && layout.ratio === ratio && layout.source === source) return;
+    settle();
 
     const fontSize = Math.min(9, Math.max(6, Math.round(width / 150)));
     const rowHeight = fontSize + 1;
@@ -72,7 +74,6 @@ export function mountArtwork(picture) {
       }
     }
 
-    settle();
     display.drawImage(base, 0, 0);
   }
 
@@ -92,15 +93,28 @@ export function mountArtwork(picture) {
     const relativeX = (point.clientX - bounds.left) / bounds.width - .5;
     const travel = point.clientX - (previousX ?? point.clientX);
     const shift = Math.round(Math.max(-52, Math.min(52, relativeX * 48 + travel)) * ratio);
-    const line = Math.round(rowHeight * ratio);
     const step = Math.round(base.width * .56);
     previousX = point.clientX;
 
-    display.drawImage(base, 0, 0);
-    displace(0, y * line, step, line, shift);
-    displace(step, (y + 1) * line, base.width - step, 2 * line, shift);
-    displace(0, (y + 4) * line, base.width, line, Math.round(-shift * .55));
+    if (damage?.row === y && damage.shift === shift) return;
+    restoreRows();
+    if (!shift) return;
+    const rowPixel = offset => Math.round((y + offset) * rowHeight * ratio);
+    const top = rowPixel(0);
+    const end = rowPixel(5);
+    damage = { row: y, shift, top, height: Math.min(end, base.height) - top };
+    displace(0, top, step, rowPixel(1) - top, shift);
+    displace(step, rowPixel(1), base.width - step, rowPixel(3) - rowPixel(1), shift);
+    displace(0, rowPixel(4), base.width, end - rowPixel(4), Math.round(-shift * .55));
     artwork.setAttribute('data-tracking', '');
+  }
+
+  function restoreRows() {
+    if (!damage) return;
+    const { top, height } = damage;
+    if (height > 0) display.drawImage(base, 0, top, base.width, height, 0, top, base.width, height);
+    damage = undefined;
+    artwork.removeAttribute('data-tracking');
   }
 
   function settle() {
@@ -109,8 +123,7 @@ export function mountArtwork(picture) {
     frame = undefined;
     point = undefined;
     previousX = undefined;
-    if (artwork.hasAttribute('data-tracking')) display.drawImage(base, 0, 0);
-    artwork.removeAttribute('data-tracking');
+    restoreRows();
   }
 
   image.addEventListener('load', render);

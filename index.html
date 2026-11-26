@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#000000">
   <meta name="description" content="Convert public X videos to GIFs and animated WebP stickers on your device.">
-  <meta property="og:title" content="xgif — X video to GIF">
+  <meta property="og:title" content="xgif">
   <meta property="og:description" content="Make looping GIFs and animated stickers from X videos.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://wysh3.github.io/xgif/">
@@ -17,67 +17,55 @@
   <link rel="canonical" href="https://wysh3.github.io/xgif/">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-  <title>xgif — X video to GIF</title>
+  <title>xgif</title>
 </head>
 <body>
-  <svg class="symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-    <symbol id="link" viewBox="0 0 24 24"><path d="M10 13.5l4-4m1-3 2-2a3.5 3.5 0 0 1 5 5l-4 4a3.5 3.5 0 0 1-5 0m-4 4-2 2a3.5 3.5 0 0 1-5-5l4-4a3.5 3.5 0 0 1 5 0"/></symbol>
-    <symbol id="source" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16"/></symbol>
-    <symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
-    <symbol id="folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
-    <symbol id="trim-icon" viewBox="0 0 24 24"><path d="M5 7h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zm2 3v4m10-4v4"/></symbol>
-    <symbol id="chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
-    <symbol id="options-icon" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16m-12-12v4m7 1v4m-5 1v4"/></symbol>
-    <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
-    <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></symbol>
-    <symbol id="share-icon" viewBox="0 0 24 24"><path d="M12 15V3m-4 4 4-4 4 4M7 10H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/></symbol>
-  </svg>
-
   <div class="shell">
     <header class="topbar">
-      <span class="wordmark"><span class="signal-mark" aria-hidden="true"><i></i><i></i><i></i></span>xgif</span>
+      <span class="wordmark"><span class="icon" aria-hidden="true">[~]</span><span data-ascii>xgif</span></span>
       <a class="icon-button" href="https://github.com/wysh3/xgif" aria-label="Source code on GitHub" title="Source code on GitHub">
-        <svg class="icon" aria-hidden="true"><use href="#source"/></svg>
+        <span class="icon" aria-hidden="true">&lt;/&gt;</span>
       </a>
     </header>
 
     <main class="workspace">
       <section class="console" aria-labelledby="title">
-        <h1 id="title"><span>X video</span> <span>to GIF</span></h1>
+        <h1 id="title"><span data-ascii>X video</span> <span data-ascii>to GIF</span></h1>
         <form id="converter">
           <fieldset id="controls">
             <label class="visually-hidden" for="post">X post link</label>
             <div class="command">
-              <svg class="icon" aria-hidden="true"><use href="#link"/></svg>
-              <input id="post" type="url" inputmode="url" placeholder="Paste an X post link" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="status">
+              <span class="icon" aria-hidden="true">&gt;</span>
+              <input id="post" type="url" inputmode="url" placeholder="X post link" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="status">
+              <span class="command-placeholder" data-ascii aria-hidden="true">X post link</span>
               <span id="file-name" hidden></span>
-              <button id="remove-file" class="icon-button" type="button" aria-label="Remove video" hidden><svg class="icon" aria-hidden="true"><use href="#close"/></svg></button>
+              <button id="remove-file" class="icon-button" type="button" aria-label="Remove video" hidden><span class="icon" aria-hidden="true">[x]</span></button>
               <button id="convert" class="primary" type="submit" aria-label="Paste &amp; convert">
-                <span id="convert-text">Paste</span><svg class="icon" aria-hidden="true"><use href="#arrow"/></svg>
+                <span id="convert-text" data-ascii>Paste</span><span class="icon" aria-hidden="true">-&gt;</span>
               </button>
             </div>
             <div class="toolbar action-row">
               <fieldset class="formats">
                 <legend class="visually-hidden">Output format</legend>
-                <label><input type="radio" name="format" value="gif" checked><span>GIF</span></label>
-                <label><input type="radio" name="format" value="webp"><span>Sticker</span></label>
+                <label><input type="radio" name="format" value="gif" checked><span data-ascii>GIF</span></label>
+                <label><input type="radio" name="format" value="webp"><span data-ascii>Sticker</span></label>
               </fieldset>
               <button id="toggle-options" class="icon-button" type="button" aria-label="Options" title="Options" aria-haspopup="dialog" aria-expanded="false" aria-controls="options">
-                <svg class="icon" aria-hidden="true"><use href="#options-icon"/></svg>
+                <span class="icon" aria-hidden="true">[-]</span>
               </button>
             </div>
-            <label id="clip-picker" class="clip-picker" hidden>Video in post <select id="clip"></select></label>
+            <label id="clip-picker" class="clip-picker" hidden><span data-ascii>Video in post</span><select id="clip"></select></label>
 
             <dialog id="options" aria-labelledby="options-title" closedby="any">
-              <header><h2 id="options-title">Options</h2><button id="close-options" class="secondary" type="button">Done</button></header>
+              <header><h2 id="options-title" data-ascii>Options</h2><button id="close-options" class="secondary" type="button"><span data-ascii>Done</span></button></header>
               <div class="option-actions">
-                <button id="choose-video" class="option-row" type="button"><svg class="icon" aria-hidden="true"><use href="#folder"/></svg>Open video…<svg class="icon chevron" aria-hidden="true"><use href="#chevron"/></svg></button>
+                <button id="choose-video" class="option-row" type="button"><span class="icon" aria-hidden="true">[/]</span><span data-ascii>Open video</span><span class="icon chevron" aria-hidden="true">&gt;</span></button>
                 <input id="file" type="file" accept="video/*,.mov,.mkv" hidden>
-                <button id="toggle-trim" class="option-row" type="button" aria-controls="trim-options" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#trim-icon"/></svg>Trim clip<svg class="icon chevron" aria-hidden="true"><use href="#chevron"/></svg></button>
+                <button id="toggle-trim" class="option-row" type="button" aria-controls="trim-options" aria-expanded="false"><span class="icon" aria-hidden="true">[|]</span><span data-ascii>Trim clip</span><span class="icon chevron" aria-hidden="true">&gt;</span></button>
               </div>
               <div id="trim-options" class="trim-options" hidden>
-                <label>Start (seconds)<input id="start" type="number" min="0" step="0.1" value="0" required></label>
-                <label>Length (seconds)<input id="length" type="number" min="0.5" max="10" step="0.1" value="3" required></label>
+                <label><span data-ascii="Start sec">Start (seconds)</span><input id="start" type="number" min="0" step="0.1" value="0" required></label>
+                <label><span data-ascii="Length sec">Length (seconds)</span><input id="length" type="number" min="0.5" max="10" step="0.1" value="3" required></label>
               </div>
             </dialog>
           </fieldset>
@@ -87,7 +75,7 @@
           <p id="status" role="status" aria-live="polite"></p>
           <div id="working" class="working" hidden>
             <progress id="progress" aria-label="Conversion progress"></progress>
-            <button id="cancel" class="secondary" type="button">Cancel</button>
+            <button id="cancel" class="secondary" type="button"><span data-ascii>Cancel</span></button>
           </div>
         </div>
       </section>
@@ -103,17 +91,17 @@
         <section id="result" aria-labelledby="result-name" tabindex="-1" hidden>
           <div class="preview"><img id="preview" alt="Converted animation"></div>
           <div class="result-bar">
-            <div><h2 id="result-name"></h2><span id="result-size"></span></div>
+            <div><h2 id="result-name" data-ascii></h2><span id="result-size"></span></div>
             <div class="result-actions">
-              <a id="save" class="secondary" download><svg class="icon" aria-hidden="true"><use href="#download"/></svg>Save</a>
-              <button id="copy" class="secondary" type="button" hidden>Copy</button>
-              <button id="share" class="primary" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#share-icon"/></svg>Share</button>
+              <a id="save" class="secondary" download><span class="icon" aria-hidden="true">[v]</span><span data-ascii>Save</span></a>
+              <button id="copy" class="secondary" type="button" hidden><span data-ascii>Copy</span></button>
+              <button id="share" class="primary" type="button" hidden><span class="icon" aria-hidden="true">[^]</span><span data-ascii>Share</span></button>
             </div>
           </div>
           <p id="result-help" hidden></p>
         </section>
       </div>
-      <span class="drop-hint" aria-hidden="true">Drop video</span>
+      <span class="drop-hint" aria-hidden="true"><span data-ascii>Drop video</span></span>
     </main>
   </div>
   <script type="module" src="/src/main.js"></script>

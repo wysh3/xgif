@@ -1,7 +1,11 @@
 import './style.css';
+import { setAsciiText } from './ascii-type.js';
 import { fetchVideo, resolveVideo, videoLimit } from './source.js';
 
 const byId = id => document.getElementById(id);
+document.querySelectorAll('[data-ascii]').forEach(label => {
+  if (label.textContent) setAsciiText(label, label.textContent, label.dataset.ascii || label.textContent);
+});
 const form = byId('converter');
 const workspace = document.querySelector('.workspace');
 const controls = byId('controls');
@@ -70,8 +74,11 @@ function resetSource() {
 
 function updateInput() {
   const hasSource = Boolean(localFile || post.value.trim());
-  byId('convert-text').textContent = hasSource ? 'Convert' : 'Paste';
-  convert.setAttribute('aria-label', hasSource ? 'Convert' : 'Paste & convert');
+  const action = hasSource ? 'Convert' : 'Paste & convert';
+  if (convert.getAttribute('aria-label') !== action) {
+    setAsciiText(byId('convert-text'), hasSource ? 'Convert' : 'Paste');
+    convert.setAttribute('aria-label', action);
+  }
   const name = byId('file-name');
   name.textContent = localFile?.name || '';
   name.title = name.textContent;
@@ -118,7 +125,7 @@ async function acquireVideo(input, signal) {
     return localFile;
   }
   if (resolved?.input !== input) {
-    report('Finding the video on X…');
+    report('Finding the video on X...');
     const videos = await resolveVideo(input, signal);
     signal.throwIfAborted();
     resolved = { input, videos };
@@ -128,9 +135,9 @@ async function acquireVideo(input, signal) {
   const url = resolved.videos[clip.selectedIndex]?.url;
   if (!url) throw new Error('No video was selected.');
   if (cachedVideo?.url === url) return cachedVideo.blob;
-  report('Fetching the video…');
+  report('Fetching the video...');
   const blob = await fetchVideo(url, signal, (bytes, total) => {
-    report('Fetching the video…', total ? bytes / total : undefined);
+    report('Fetching the video...', total ? bytes / total : undefined);
   });
   signal.throwIfAborted();
   cachedVideo = { url, blob };
@@ -144,7 +151,7 @@ function showResult(value) {
   save.href = objectUrl;
   save.download = value.name;
   const sticker = value.type === 'image/webp';
-  byId('result-name').textContent = sticker ? 'Animated WebP sticker' : 'Animated GIF';
+  setAsciiText(byId('result-name'), sticker ? 'Animated WebP sticker' : 'Animated GIF', sticker ? 'WebP sticker' : 'Animated GIF');
   byId('result-size').textContent = value.size >= 1_000_000
     ? `${(value.size / 1_000_000).toFixed(1)} MB`
     : `${Math.max(1, Math.round(value.size / 1000))} KB`;
