@@ -4,7 +4,6 @@ import { fetchVideo, resolveVideo, videoLimit } from './source.js';
 const byId = id => document.getElementById(id);
 const form = byId('converter');
 const workspace = document.querySelector('.workspace');
-const stage = document.querySelector('.stage');
 const controls = byId('controls');
 const post = byId('post');
 const file = byId('file');
@@ -273,7 +272,7 @@ copy.addEventListener('click', async () => {
 });
 
 const loadArtwork = () => {
-  import('./artwork.js').then(({ mountArtwork }) => mountArtwork(stage)).catch(() => {});
+  import('./artwork.js').then(({ mountArtwork }) => mountArtwork(byId('art'))).catch(() => {});
 };
 if ('requestIdleCallback' in window) window.requestIdleCallback(loadArtwork, { timeout: 600 });
 else window.requestAnimationFrame(() => window.setTimeout(loadArtwork, 0));

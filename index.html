@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#080808">
+  <meta name="theme-color" content="#0e0f12">
   <meta name="description" content="Convert public X videos to GIFs and animated WebP stickers on your device.">
   <meta property="og:title" content="xgif — X video to GIF">
   <meta property="og:description" content="Make looping GIFs and animated stickers from X videos.">
@@ -32,16 +32,22 @@
 
   <div class="shell">
     <header class="topbar">
-      <span class="signal-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="wordmark"><span class="signal-mark" aria-hidden="true"><i></i><i></i><i></i></span>xgif</span>
       <a class="icon-button" href="https://github.com/wysh3/xgif" aria-label="Source code on GitHub" title="Source code on GitHub">
         <svg class="icon" aria-hidden="true"><use href="#source"/></svg>
       </a>
     </header>
 
     <main class="workspace">
+      <div class="hero-art" aria-hidden="true">
+        <picture id="art">
+          <source media="(max-width: 560px)" srcset="/src/assets/loop-small.webp">
+          <img src="/src/assets/loop.webp" alt="" width="1200" height="800" fetchpriority="high">
+        </picture>
+      </div>
       <section class="console" aria-labelledby="title">
-        <h1 id="title">xgif<span aria-hidden="true">_</span></h1>
-        <p class="intro">X video to GIF or animated sticker.</p>
+        <h1 id="title">X video to GIF</h1>
+        <p class="intro">From a public X post or a video file.</p>
 
         <form id="converter">
           <fieldset id="controls">
@@ -91,21 +97,18 @@
         </div>
       </section>
 
-      <section class="stage" aria-label="Animation preview">
-        <canvas id="art" aria-hidden="true"></canvas>
-        <span class="drop-hint" aria-hidden="true">Drop video</span>
-        <section id="result" aria-labelledby="result-name" tabindex="-1" hidden>
-          <div class="preview"><img id="preview" alt="Converted animation"></div>
-          <div class="result-bar">
-            <div><h2 id="result-name"></h2><span id="result-size"></span></div>
-            <div class="result-actions">
-              <a id="save" class="secondary" download><svg class="icon" aria-hidden="true"><use href="#download"/></svg>Save</a>
-              <button id="copy" class="secondary" type="button" hidden>Copy</button>
-              <button id="share" class="primary" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#share-icon"/></svg>Share</button>
-            </div>
+      <span class="drop-hint" aria-hidden="true">Drop video</span>
+      <section id="result" aria-labelledby="result-name" tabindex="-1" hidden>
+        <div class="preview"><img id="preview" alt="Converted animation"></div>
+        <div class="result-bar">
+          <div><h2 id="result-name"></h2><span id="result-size"></span></div>
+          <div class="result-actions">
+            <a id="save" class="secondary" download><svg class="icon" aria-hidden="true"><use href="#download"/></svg>Save</a>
+            <button id="copy" class="secondary" type="button" hidden>Copy</button>
+            <button id="share" class="primary" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#share-icon"/></svg>Share</button>
           </div>
-          <p id="result-help" hidden></p>
-        </section>
+        </div>
+        <p id="result-help" hidden></p>
       </section>
     </main>
   </div>
