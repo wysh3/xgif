@@ -170,7 +170,7 @@ async function pasteLink() {
     post.focus();
     return;
   }
-  form.requestSubmit();
+  return post.value;
 }
 
 form.addEventListener('change', (event) => {
@@ -252,10 +252,10 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (controls.disabled || readingClipboard) return;
   clearResult();
-  const value = post.value.trim();
+  let value = post.value.trim();
   if (!selectedFile && !value) {
-    await pasteLink();
-    return;
+    value = await pasteLink();
+    if (!value || !form.reportValidity()) return;
   }
   const format = new FormData(form).get('format');
   const start = find('start').valueAsNumber;
