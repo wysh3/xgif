@@ -1,296 +1,256 @@
 import './style.css';
-import { mountArtwork } from './artwork.js';
+import { fetchVideo, resolveVideo, videoLimit } from './source.js';
 
-const find = (id) => document.getElementById(id);
-const form = find('converter');
-const dropZone = form.closest('.studio');
-const controls = find('controls');
-const post = find('post');
-const filePicker = find('file');
-const clipPicker = find('clip-picker');
-const clip = find('clip');
-const status = find('status');
-const spinner = document.querySelector('.spinner');
-const convert = find('convert');
-const options = find('toggle-options');
-const optionsPanel = find('options');
-const trim = find('toggle-trim');
-const trimOptions = find('trim-options');
-const fileName = find('file-name');
-const removeFile = find('remove-file');
-const sourceIcon = find('source-icon');
-const result = find('result');
-const preview = find('preview');
-const share = find('share');
-const copy = find('copy');
-const save = find('save');
+const byId = id => document.getElementById(id);
+const form = byId('converter');
+const workspace = document.querySelector('.workspace');
+const stage = document.querySelector('.stage');
+const controls = byId('controls');
+const post = byId('post');
+const file = byId('file');
+const clip = byId('clip');
+const options = byId('options');
+const optionsButton = byId('toggle-options');
+const trim = byId('trim-options');
+const trimButton = byId('toggle-trim');
+const result = byId('result');
+const preview = byId('preview');
+const share = byId('share');
+const copy = byId('copy');
+const status = byId('status');
+const progress = byId('progress');
+const working = byId('working');
+const convert = byId('convert');
+const save = byId('save');
 
-const resolver = import.meta.env.VITE_RESOLVER_URL
-  || (import.meta.env.DEV ? '/api/resolve' : '');
-const maxBytes = 40 * 1024 * 1024;
-mountArtwork(form);
-let selectedFile;
-let resolvedPost;
+let localFile;
+let resolved;
+let cachedVideo;
 let output;
-let previewURL;
+let objectUrl;
+let job;
 let readingClipboard = false;
 
-const activity = spinner.parentElement;
-new IntersectionObserver(([entry]) => {
-  activity.toggleAttribute('data-visible', entry.isIntersecting);
-}).observe(activity);
+function report(message, value, error = false) {
+  if (status.textContent !== message) status.textContent = message;
+  status.toggleAttribute('data-error', error);
+  if (Number.isFinite(value)) progress.value = Math.max(0, Math.min(1, value));
+  else progress.removeAttribute('value');
+}
 
 function setOptions(open) {
-  if (optionsPanel.open === open) return;
-  if (open) {
-    const anchor = options.getBoundingClientRect();
-    optionsPanel.style.setProperty('--options-top', `${Math.round(anchor.bottom + 8)}px`);
-    optionsPanel.style.setProperty('--options-right', `${Math.round(window.innerWidth - anchor.right)}px`);
-    optionsPanel.showModal();
-  } else {
-    optionsPanel.close();
-  }
-  options.setAttribute('aria-expanded', String(open));
+  if (open === options.open) return;
+  if (open) options.showModal();
+  else options.close();
+  optionsButton.setAttribute('aria-expanded', String(open));
 }
-options.addEventListener('click', () => setOptions(true));
-find('close-options').addEventListener('click', () => setOptions(false));
-optionsPanel.addEventListener('close', () => {
-  options.setAttribute('aria-expanded', 'false');
-});
 
 function setTrim(open) {
-  trim.setAttribute('aria-expanded', String(open));
-  trimOptions.hidden = !open;
+  trim.hidden = !open;
+  trimButton.setAttribute('aria-expanded', String(open));
 }
 
-trim.addEventListener('click', () => setTrim(trimOptions.hidden));
-form.addEventListener('invalid', (event) => {
-  if (trimOptions.contains(event.target)) {
-    setOptions(true);
-    setTrim(true);
-  }
-  if (event.target === post) reportPostError('Paste a complete link to a public X post.');
-}, true);
-
-function report(message, error = false) {
-  spinner.hidden = !message || !controls.disabled || error;
-  status.textContent = message;
-  status.toggleAttribute('data-error', error);
-}
-
-function reportPostError(message) {
-  post.setAttribute('aria-invalid', 'true');
-  report(message, true);
-}
-
-function clearResult() {
-  if (previewURL) URL.revokeObjectURL(previewURL);
-  previewURL = undefined;
+function resetResult() {
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  objectUrl = undefined;
   output = undefined;
+  result.hidden = true;
   preview.removeAttribute('src');
   save.removeAttribute('href');
-  result.hidden = true;
-}
-
-function resetSource() {
-  post.removeAttribute('aria-invalid');
-  resolvedPost = undefined;
-  clip.replaceChildren();
-  clipPicker.hidden = true;
-  clearResult();
   report('');
 }
 
-function updateSourceField() {
-  const hasSource = Boolean(selectedFile || post.value.trim());
-  find('convert-text').textContent = hasSource ? 'Convert' : 'Paste';
-  find('convert-icon').setAttribute('href', hasSource ? '#icon-arrow' : '#icon-paste');
-  convert.setAttribute('aria-label', hasSource ? 'Convert' : 'Paste & convert');
-  fileName.textContent = selectedFile?.name ?? '';
-  fileName.title = fileName.textContent;
-  fileName.hidden = !selectedFile;
-  removeFile.hidden = !selectedFile;
-  post.hidden = Boolean(selectedFile);
-  sourceIcon.setAttribute('href', selectedFile ? '#icon-folder' : '#icon-link');
+function resetSource() {
+  resolved = undefined;
+  cachedVideo = undefined;
+  clip.replaceChildren();
+  byId('clip-picker').hidden = true;
+  post.removeAttribute('aria-invalid');
+  resetResult();
 }
 
-function selectFile(file) {
-  if (!file.type.startsWith('video/') && !/\.(mp4|m4v|webm|mov|mkv|avi|mpeg|mpg|3gp|ogv)$/i.test(file.name)) {
-    report('Choose a video file to convert.', true);
+function updateInput() {
+  const hasSource = Boolean(localFile || post.value.trim());
+  byId('convert-text').textContent = hasSource ? 'Convert' : 'Paste';
+  convert.setAttribute('aria-label', hasSource ? 'Convert' : 'Paste & convert');
+  const name = byId('file-name');
+  name.textContent = localFile?.name || '';
+  name.title = name.textContent;
+  name.hidden = !localFile;
+  post.hidden = Boolean(localFile);
+  byId('remove-file').hidden = !localFile;
+}
+
+function selectFile(candidate) {
+  if (!candidate.type.startsWith('video/') && !/\.(mp4|m4v|webm|mov|mkv|avi|mpg|mpeg|3gp|ogv)$/i.test(candidate.name)) {
+    report('Choose a video file.', undefined, true);
     return;
   }
   resetSource();
-  selectedFile = file;
+  localFile = candidate;
   post.value = '';
-  updateSourceField();
+  updateInput();
   setOptions(false);
   convert.focus();
 }
 
-function clearFile() {
-  selectedFile = undefined;
-  filePicker.value = '';
-  updateSourceField();
-}
-
-post.addEventListener('input', () => {
-  clearFile();
-  resetSource();
-});
-removeFile.addEventListener('click', () => {
-  clearFile();
-  resetSource();
-  post.focus();
-});
-find('choose-video').addEventListener('click', () => filePicker.click());
-filePicker.addEventListener('change', () => {
-  const file = filePicker.files[0];
-  filePicker.value = '';
-  if (file) selectFile(file);
-});
-dropZone.addEventListener('dragover', (event) => {
-  if (!Array.from(event.dataTransfer.types).includes('Files')) return;
-  event.preventDefault();
-  event.dataTransfer.dropEffect = controls.disabled ? 'none' : 'copy';
-  dropZone.toggleAttribute('data-drop', !controls.disabled);
-});
-dropZone.addEventListener('dragleave', (event) => {
-  if (!dropZone.contains(event.relatedTarget)) dropZone.removeAttribute('data-drop');
-});
-dropZone.addEventListener('drop', (event) => {
-  if (!Array.from(event.dataTransfer.types).includes('Files')) return;
-  event.preventDefault();
-  dropZone.removeAttribute('data-drop');
-  if (!controls.disabled && event.dataTransfer.files[0]) selectFile(event.dataTransfer.files[0]);
-});
-
-async function pasteLink() {
+async function readClipboard() {
   readingClipboard = true;
   convert.disabled = true;
   try {
     const value = (await navigator.clipboard.readText()).trim();
     if (!value) throw new Error('Empty clipboard');
     post.value = value;
-    post.dispatchEvent(new Event('input'));
+    resetSource();
+    updateInput();
   } catch {
-    report('Paste your X link into the field to continue.');
+    report('Paste an X link into the field to continue.');
     post.focus();
-    return;
   } finally {
     readingClipboard = false;
     convert.disabled = false;
   }
-  if (!post.validity.valid) {
-    reportPostError('Copy a link to a public X post, then try again.');
-    post.focus();
-    return;
-  }
-  return post.value;
+  return post.value.trim();
 }
 
-form.addEventListener('change', (event) => {
-  if (event.target === clip || ['format', 'start', 'length'].includes(event.target.name || event.target.id)) {
-    clearResult();
-    report('');
+async function acquireVideo(input, signal) {
+  if (localFile) {
+    if (localFile.size > videoLimit) throw new Error('Video is too large. Choose a clip under 40 MB.');
+    return localFile;
   }
-});
-
-async function resolvePost(value) {
-  if (resolvedPost?.input === value) return resolvedPost.videos[clip.selectedIndex];
-  if (!resolver) throw new Error('X link lookup is offline. Choose a video to convert it here.');
-  report('Finding the X video…');
-  const url = new URL(resolver, window.location.href);
-  url.searchParams.set('url', value);
-  const response = await fetch(url, { signal: AbortSignal.timeout(12_000) });
-  const data = await response.json().catch(() => null);
-  if (!response.ok || !data?.videos?.length) {
-    if (response.status === 400) post.setAttribute('aria-invalid', 'true');
-    throw new Error(data?.error || 'Could not look up this X link. Try again or choose a video.');
+  if (resolved?.input !== input) {
+    report('Finding the video on X…');
+    const videos = await resolveVideo(input, signal);
+    signal.throwIfAborted();
+    resolved = { input, videos };
+    clip.replaceChildren(...videos.map(({ index }) => new Option(`Video ${index}`)));
+    byId('clip-picker').hidden = videos.length < 2;
   }
-  resolvedPost = { input: value, videos: data.videos };
-  clip.replaceChildren(...data.videos.map(({ index }) => new Option(`Video ${index}`)));
-  clipPicker.hidden = data.videos.length < 2;
-  return data.videos[0];
-}
-
-async function readClip(url) {
-  report('Getting the video from X…');
-  const response = await fetch(url, {
-    referrerPolicy: 'no-referrer',
-    signal: AbortSignal.timeout(30_000),
+  const url = resolved.videos[clip.selectedIndex]?.url;
+  if (!url) throw new Error('No video was selected.');
+  if (cachedVideo?.url === url) return cachedVideo.blob;
+  report('Fetching the video…');
+  const blob = await fetchVideo(url, signal, (bytes, total) => {
+    report('Fetching the video…', total ? bytes / total : undefined);
   });
-  if (!response.ok || !response.body) throw new Error('Could not get the video from X. Try a local video.');
-  const tooLarge = 'This video exceeds 40 MB. Try a shorter source video.';
-  const reader = response.body.getReader();
-  const chunks = [];
-  let size = 0;
-  try {
-    if (Number(response.headers.get('Content-Length')) > maxBytes) throw new Error(tooLarge);
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > maxBytes) throw new Error(tooLarge);
-      chunks.push(value);
-    }
-  } finally {
-    await reader.cancel().catch(() => {});
-  }
-  return new Blob(chunks);
+  signal.throwIfAborted();
+  cachedVideo = { url, blob };
+  return blob;
 }
 
-function showOutput(file) {
-  output = file;
-  previewURL = URL.createObjectURL(file);
-  preview.src = previewURL;
-  save.href = previewURL;
-  save.download = file.name;
-  find('result-name').textContent = file.type === 'image/gif' ? 'Animated GIF' : 'Animated WebP sticker';
-  find('result-size').textContent = file.size >= 1_000_000
-    ? `${(file.size / 1_000_000).toFixed(1)} MB`
-    : `${Math.max(1, Math.round(file.size / 1000))} KB`;
-  share.hidden = !(navigator.share && navigator.canShare?.({ files: [file] }));
-  copy.hidden = !(navigator.clipboard?.write && window.ClipboardItem?.supports?.(file.type));
-  const help = find('result-help');
-  help.textContent = file.type === 'image/webp'
-    ? `${share.hidden ? 'Save' : 'Share or save'} the WebP file to keep it animated. Pasting the preview can produce a still. Use a compatible sticker app to import it into WhatsApp.`
-    : copy.hidden && share.hidden
-      ? 'Save the GIF to keep it animated. Copying the preview can paste a still image.'
-      : '';
+function showResult(value) {
+  output = value;
+  objectUrl = URL.createObjectURL(value);
+  preview.src = objectUrl;
+  save.href = objectUrl;
+  save.download = value.name;
+  const sticker = value.type === 'image/webp';
+  byId('result-name').textContent = sticker ? 'Animated WebP sticker' : 'Animated GIF';
+  byId('result-size').textContent = value.size >= 1_000_000
+    ? `${(value.size / 1_000_000).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(value.size / 1000))} KB`;
+  share.hidden = !navigator.share || !navigator.canShare?.({ files: [value] });
+  copy.hidden = !navigator.clipboard?.write || !globalThis.ClipboardItem?.supports?.(value.type);
+  const help = byId('result-help');
+  help.textContent = sticker
+    ? 'For a native WhatsApp sticker, import the animated WebP in a compatible sticker app.'
+    : '';
   help.hidden = !help.textContent;
   result.hidden = false;
   result.focus({ preventScroll: true });
-  result.scrollIntoView({ block: 'nearest' });
+  result.scrollIntoView({ block: 'nearest', behavior: 'instant' });
 }
 
-form.addEventListener('submit', async (event) => {
+optionsButton.addEventListener('click', () => setOptions(true));
+byId('close-options').addEventListener('click', () => setOptions(false));
+options.addEventListener('close', () => optionsButton.setAttribute('aria-expanded', 'false'));
+trimButton.addEventListener('click', () => setTrim(trim.hidden));
+byId('choose-video').addEventListener('click', () => file.click());
+file.addEventListener('change', () => {
+  const next = file.files[0];
+  file.value = '';
+  if (next) selectFile(next);
+});
+byId('remove-file').addEventListener('click', () => {
+  localFile = undefined;
+  resetSource();
+  updateInput();
+  post.focus();
+});
+post.addEventListener('input', () => {
+  const samePost = !localFile && resolved?.input === post.value.trim();
+  localFile = undefined;
+  if (!samePost) resetSource();
+  updateInput();
+});
+
+const hasFile = event => Array.from(event.dataTransfer.types).includes('Files');
+workspace.addEventListener('dragover', event => {
+  if (!hasFile(event)) return;
   event.preventDefault();
-  if (controls.disabled || readingClipboard) return;
-  clearResult();
-  let value = post.value.trim();
-  if (!selectedFile && !value) {
-    value = await pasteLink();
-    if (!value || !form.reportValidity()) return;
+  event.dataTransfer.dropEffect = job ? 'none' : 'copy';
+  workspace.toggleAttribute('data-drop', !job);
+});
+workspace.addEventListener('dragleave', event => {
+  if (!workspace.contains(event.relatedTarget)) workspace.removeAttribute('data-drop');
+});
+workspace.addEventListener('drop', event => {
+  if (!hasFile(event)) return;
+  event.preventDefault();
+  workspace.removeAttribute('data-drop');
+  const next = event.dataTransfer.files[0];
+  if (next && !job && !readingClipboard) selectFile(next);
+});
+form.addEventListener('invalid', event => {
+  if (trim.contains(event.target)) {
+    setOptions(true);
+    setTrim(true);
+  } else if (event.target === post) {
+    post.setAttribute('aria-invalid', 'true');
+    report('Enter a complete link to a public X post.', undefined, true);
   }
-  const format = new FormData(form).get('format');
-  const start = find('start').valueAsNumber;
-  const length = find('length').valueAsNumber;
+}, true);
+form.addEventListener('change', event => {
+  if (event.target === clip || event.target.name === 'format' || trim.contains(event.target)) resetResult();
+});
+
+byId('cancel').addEventListener('click', () => job?.abort());
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (job || readingClipboard) return;
+  const input = post.value.trim() || (localFile ? '' : await readClipboard());
+  if ((!localFile && !input) || !form.reportValidity()) return;
+  resetResult();
+
+  const current = new AbortController();
+  job = current;
+  const format = form.elements.namedItem('format').value;
+  const start = byId('start').valueAsNumber;
+  const length = byId('length').valueAsNumber;
   controls.disabled = true;
-  form.setAttribute('aria-busy', 'true');
+  working.hidden = false;
   try {
-    if (selectedFile?.size > maxBytes) throw new Error('This video exceeds 40 MB. Try a shorter source video.');
-    const input = selectedFile || await readClip((await resolvePost(value)).url);
-    const { convertClip } = await import('./convert.js');
-    showOutput(await convertClip(input, format, start, length, report));
+    const [video, encoder] = await Promise.all([acquireVideo(input, current.signal), import('./convert.js')]);
+    current.signal.throwIfAborted();
+    const animated = await encoder.convertClip(video, format, start, length, report, current.signal);
+    current.signal.throwIfAborted();
     report('');
+    showResult(animated);
   } catch (error) {
-    const message = error instanceof Error && !['TypeError', 'TimeoutError'].includes(error.name)
-      ? error.message
-      : 'Something interrupted the conversion. Try again or choose a shorter local video.';
-    report(message, true);
+    if (current.signal.aborted) {
+      report('Conversion canceled.');
+    } else {
+      const detail = ['TimeoutError', 'TypeError'].includes(error?.name)
+        ? 'The connection timed out or was interrupted. Try again.'
+        : error?.message || 'Could not convert this video.';
+      report(detail, undefined, true);
+    }
   } finally {
+    const canceled = current.signal.aborted;
+    working.hidden = true;
     controls.disabled = false;
-    form.removeAttribute('aria-busy');
+    job = undefined;
+    if (canceled) convert.focus();
   }
 });
 
@@ -299,15 +259,21 @@ share.addEventListener('click', async () => {
   try {
     await navigator.share({ files: [output] });
   } catch (error) {
-    if (error?.name !== 'AbortError') report('Sharing failed. Try saving the file.', true);
+    if (error?.name !== 'AbortError') report('Sharing failed. You can save the animated file.', undefined, true);
   }
 });
 copy.addEventListener('click', async () => {
   if (!output) return;
   try {
     await navigator.clipboard.write([new ClipboardItem({ [output.type]: output })]);
-    report('Copied the animation file. The app you paste into decides how to display it.');
+    report('Animation copied.');
   } catch {
-    report('Copy failed. Use Share when available, or save the file.', true);
+    report('Copy failed. Use Share or Save to keep the animation.', undefined, true);
   }
 });
+
+const loadArtwork = () => {
+  import('./artwork.js').then(({ mountArtwork }) => mountArtwork(stage)).catch(() => {});
+};
+if ('requestIdleCallback' in window) window.requestIdleCallback(loadArtwork, { timeout: 600 });
+else window.requestAnimationFrame(() => window.setTimeout(loadArtwork, 0));

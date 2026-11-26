@@ -76,5 +76,3 @@ export async function handleRequest(request, env, fetchUpstream = fetch) {
     return respond({ error: 'Could not reach X. Try again or use a local video.' }, 503);
   }
 }
-
-export default { fetch: (request, env) => handleRequest(request, env) };

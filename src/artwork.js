@@ -1,285 +1,136 @@
-function grainTile() {
-  const tile = document.createElement('canvas');
-  tile.width = tile.height = 128;
-  const ctx = tile.getContext('2d');
-  if (!ctx) return tile;
-  const pixels = ctx.createImageData(128, 128);
-  let seed = 7099;
-  for (let i = 0; i < pixels.data.length; i += 4) {
-    seed = (Math.imul(1664525, seed) + 1013904223) >>> 0;
-    const value = seed >>> 24;
-    pixels.data.fill(value > 122 ? 255 : 0, i, i + 3);
-    pixels.data[i + 3] = Math.abs(value - 122) * .56;
-  }
-  ctx.putImageData(pixels, 0, 0);
-  return tile;
-}
+// Original cut-paper silhouettes. Each layer is sampled into a limited ink palette.
+const viewWidth = 640;
+const viewHeight = 690;
+const shapes = [
+  [35, 'M638 104 C580 75 575 25 529 10 C482 -5 432 19 424 68 C417 105 446 113 450 147 C454 171 437 181 416 196 C460 201 507 233 548 284 L638 335 Z'],
+  [63, 'M638 152 C582 139 556 93 537 56 C511 14 457 38 443 68 L453 89 L445 116 L471 124 C494 133 485 161 493 190 C519 213 567 223 596 252 L638 269 Z'],
+  [102, 'M638 291 C606 216 562 191 518 176 C486 164 453 167 428 190 C398 218 376 256 361 296 L495 352 L638 382 Z'],
+  [140, 'M632 289 C609 235 578 211 531 192 C496 177 470 174 441 190 C411 208 391 247 375 280 C453 260 487 275 532 310 C582 338 605 338 639 350 Z'],
+  [47, 'M628 358 C580 336 567 299 522 276 C486 258 453 258 424 279 C466 282 509 319 536 357 C581 383 613 385 642 402 Z'],
+  [151, 'M648 665 C611 634 567 599 534 565 C499 528 471 497 432 477 C405 460 377 462 355 448 C326 430 313 405 300 383 C293 369 284 353 284 342 C286 322 304 312 320 321 C338 338 358 358 377 359 C400 361 420 350 451 364 C491 380 515 409 544 436 C574 465 610 477 653 509 Z'],
+  [166, 'M434 394 C399 367 372 346 340 324 C320 307 293 294 268 278 C246 266 223 259 207 247 C193 235 185 218 198 214 C213 211 242 231 259 239 C288 251 313 255 343 271 C369 282 381 301 408 314 C437 327 460 346 466 373 Z'],
+  [182, 'M400 381 C378 359 351 338 328 325 C309 315 292 310 270 305 C249 300 208 299 186 292 C167 287 169 274 183 269 C205 263 239 277 267 275 C298 274 319 278 348 291 C376 305 408 323 433 347 Z'],
+  [205, 'M403 363 C376 352 357 336 338 329 C311 319 297 328 275 325 C255 322 230 333 204 337 C189 339 180 331 190 319 C205 303 236 300 256 294 C279 289 300 294 326 297 C355 298 384 310 418 332 Z'],
+  [179, 'M359 440 C337 439 311 424 293 413 C274 398 272 375 267 356 C265 343 271 335 280 343 C291 354 298 371 305 381 C313 391 325 391 335 386 C346 384 353 375 366 374 C380 383 388 402 378 417 Z'],
+  [199, 'M645 526 C607 497 572 490 542 463 C508 431 493 400 457 383 C432 370 413 375 392 357 C375 340 353 337 329 338 C345 363 365 384 383 398 C416 420 448 420 476 447 C518 481 533 515 568 544 C593 571 620 589 645 607 Z'],
+  [112, 'M644 657 C604 614 576 608 548 575 C513 538 497 509 457 481 C437 464 403 457 390 449 C420 447 461 450 485 470 C510 491 536 528 566 551 C603 580 621 590 646 609 Z'],
+];
 
-const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
-
-function sizedCanvas(canvas, ctx, maxDpr = 2) {
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  const dpr = Math.min(devicePixelRatio || 1, maxDpr);
-  const pixelWidth = Math.round(width * dpr);
-  const pixelHeight = Math.round(height * dpr);
-  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-    canvas.width = pixelWidth;
-    canvas.height = pixelHeight;
-  }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { width, height, dpr };
-}
-
+const marks = '01=:+-./_[]{}<>%#*?';
+const move = (v, a, b) => Math.max(a, Math.min(b, v));
 function hash(x, y) {
-  const n = Math.imul(x, 374761393) ^ Math.imul(y, 668265263);
-  return (Math.imul(n ^ (n >>> 13), 1274126177) >>> 0) / 4294967295;
+  const value = Math.imul(x, 374761393) ^ Math.imul(y, 668265263);
+  return (Math.imul(value ^ (value >>> 13), 1274126177) >>> 0) / 4294967295;
 }
 
-function noise(x, y) {
-  const i = Math.floor(x), j = Math.floor(y);
-  const ax = x - i, ay = y - j;
-  const fx = ax * ax * (3 - 2 * ax), fy = ay * ay * (3 - 2 * ay);
-  const top = hash(i, j) * (1 - fx) + hash(i + 1, j) * fx;
-  const bottom = hash(i, j + 1) * (1 - fx) + hash(i + 1, j + 1) * fx;
-  return top * (1 - fy) + bottom * fy;
-}
-
-const sky = [[37, 64, 80], [62, 88, 106], [79, 110, 128], [104, 137, 151], [121, 151, 159]];
-const mist = [[83, 105, 112], [128, 146, 147], [166, 176, 167], [206, 207, 181], [229, 222, 195]];
-const ridge = [[28, 40, 34], [47, 59, 46], [66, 76, 54], [102, 103, 65], [150, 139, 89]];
-
-function swatch(colors, value) {
-  return colors[Math.max(0, Math.min(colors.length - 1, Math.floor(value * colors.length)))];
-}
-
-function heightField(ctx, pixels, width, height, turn) {
-  for (let row = 0; row < height; row++) {
-    const y = row / height;
-    const strip = 2.2 + turn * .8;
-    const displacement = [
-      [.28, .31, -.09], [.48, .505, .10], [.563, .585, -.075], [.71, .72, .13],
-    ].reduce((shift, [from, to, amount]) => y > from && y < to ? amount * strip : shift, 0);
-    for (let col = 0; col < width; col++) {
-      const x = col / width + (col > width * .23 ? displacement : 0);
-      const px = x + turn * .11;
-      const hills = .59 + Math.sin(px * 8.4 - .7) * .09
-        + Math.cos(px * 15.7 + 1.2) * .035 + (noise(px * 7, 4.2) - .5) * .07;
-      const cloud = noise(px * 6.1 + 2, y * 11.8 + 2.6) * .63
-        + noise(px * 15.5, y * 22 - .6) * .24 + noise(px * 38, y * 43) * .13
-        - Math.abs(y - .37) * .82;
-      let color = swatch(sky, y * 1.23 + .13 * noise(px * 5, y * 4));
-      if (cloud > .39 && y < hills + .065) color = swatch(mist, (cloud - .39) * 3.65);
-
-      if (y >= hills) {
-        const depth = y - hills;
-        const texture = noise(px * 11, y * 65 + Math.cos(px * 10) * 1.4);
-        const contour = Math.sin(depth * (118 + 17 * turn) + texture * 3.3) * .105;
-        color = swatch(ridge, .63 - depth * .85 + (texture - .5) * .42 + contour);
-      }
-
-      const grit = (hash(col, row) - .5) * 13 + (row % 3 === 0 ? -3 : 0);
-      const index = (row * width + col) * 4;
-      pixels.data[index] = color[0] + grit;
-      pixels.data[index + 1] = color[1] + grit;
-      pixels.data[index + 2] = color[2] + grit;
-      pixels.data[index + 3] = 255;
+function generateField() {
+  const mask = document.createElement('canvas');
+  mask.width = 400;
+  mask.height = 431;
+  const ctx = mask.getContext('2d', { willReadFrequently: true });
+  ctx.scale(mask.width / viewWidth, mask.height / viewHeight);
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, viewWidth, viewHeight);
+  for (const [tone, path] of shapes) {
+    ctx.fillStyle = `rgb(${tone} ${tone} ${tone})`;
+    ctx.fill(new Path2D(path));
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const image = ctx.getImageData(0, 0, mask.width, mask.height);
+  const colors = [6, 16, 35, 66, 112, 169, 224, 246];
+  for (let y = 0; y < mask.height; y++) {
+    for (let x = 0; x < mask.width; x++) {
+      const p = (y * mask.width + x) * 4;
+      const value = image.data[p];
+      const signal = Math.sin(x * .037 + y * .041) * 24 + Math.sin(y * .89 - x * .11) * 14;
+      const noise = hash(x + 3, y + 67);
+      const ink = value < 13 ? (noise > .976 ? 37 : 8)
+        : colors[move(Math.floor((value + signal + (noise - .45) * 51) / 30), 0, colors.length - 1)];
+      image.data[p] = image.data[p + 1] = image.data[p + 2] = ink;
     }
   }
-  ctx.putImageData(pixels, 0, 0);
-}
-
-function tear(ctx, buffer, width, height, cursor, strength) {
-  const focusX = clamp(cursor.x, width * .08, width * .92);
-  const focusY = clamp(cursor.y, height * .09, height * .91);
-  const reach = Math.max(60, width * (.28 + strength * .40));
-  for (let row = 0; row < 11; row++) {
-    const offset = row - 5;
-    const y = Math.round(clamp(focusY + offset * 5, 0, height - 2));
-    const length = Math.min(Math.max(2, row % 4 + 1), height - y);
-    const left = clamp(focusX - reach * (.35 + hash(row, 9) * .55), 0, width - 2);
-    const right = clamp(focusX + reach * (.25 + hash(3, row) * .48), left + 1, width);
-    const displacement = strength * (15 + hash(row, 3) * 66) * (row % 3 === 0 ? -1 : 1);
-    ctx.globalAlpha = strength * (.56 + hash(row, 19) * .42);
-    ctx.drawImage(buffer, left * buffer.width / width, y * buffer.height / height,
-      (right - left) * buffer.width / width, length * buffer.height / height,
-      left + displacement, y, right - left, length);
-    ctx.fillStyle = row % 2 ? '#ccd1b6' : '#8ea99f';
-    ctx.fillRect(left + displacement * 1.6, y, 5 + hash(row, 40) * 18, 1);
+  ctx.putImageData(image, 0, 0);
+  ctx.font = '5px monospace';
+  for (let row = 1; row < 74; row++) {
+    const y = row * 5.8;
+    const length = 15 + Math.floor(hash(row, 45) * 31);
+    for (let col = 0; col < length; col++) {
+      if (hash(row, col) < .16) continue;
+      const opacity = .20 + hash(col, row + 3) * .48;
+      ctx.fillStyle = `rgba(220,220,216,${opacity})`;
+      ctx.fillText(marks[Math.floor(hash(col + 17, row + 1) * marks.length)] || '.', 8 + col * 3.05, y);
+    }
   }
-  ctx.globalAlpha = 1;
+  return mask;
 }
 
-function ghost(ctx, buffer, echo, age, field) {
-  const strength = Math.max(0, 1 - age / 860);
-  const x = echo.x + echo.dx * (age / 270);
-  const y = echo.y + echo.dy * (age / 400);
-  const size = 48 + hash(echo.seed, 5) * 123;
-  const sampleX = clamp(echo.x / field.width, 0, .74) * buffer.width;
-  const sampleY = clamp(echo.y / field.height, 0, .85) * buffer.height;
-  ctx.imageSmoothingEnabled = false;
-  ctx.globalAlpha = strength * .53;
-  ctx.drawImage(buffer, sampleX, sampleY, buffer.width * .22, 5, x + 15, y - 12, size, 12);
-  ctx.drawImage(buffer, sampleX, sampleY + 5, buffer.width * .25, 9, x - size * .48, y + 7, size, 20);
-  ctx.drawImage(buffer, sampleX + 8, sampleY, buffer.width * .12, 2, x + 31, y + 30, size * .54, 3);
-  ctx.globalAlpha = strength * .34;
-  ctx.strokeStyle = '#d0d5bc';
-  ctx.strokeRect(Math.round(x - size * .30) + .5, Math.round(y - 28) + .5, size * .77, 54);
-  ctx.fillStyle = '#c3be99';
-  ctx.fillRect(x + size * .55, y - 28, 4, 4);
-  ctx.fillRect(x - size * .39, y + 38, 21, 1);
-  ctx.globalAlpha = 1;
-}
-
-export function mountArtwork(form) {
-  const art = document.getElementById('loop-art');
-  const surface = document.getElementById('surface-texture');
-  const scene = art.getContext('2d');
-  const chrome = surface.getContext('2d');
-  const echoCanvas = document.getElementById('signal-echo');
-  const backdrop = echoCanvas.getContext('2d');
-  const buffer = document.createElement('canvas');
-  const copy = buffer.getContext('2d');
-  let fieldPixels;
-  if (!scene || !chrome || !copy || !backdrop) return;
-
-  const tile = grainTile();
-  const sceneGrain = scene.createPattern(tile, 'repeat');
-  const chromeGrain = chrome.createPattern(tile, 'repeat');
-  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const format = form.elements.namedItem('format');
-  let turn = format.value === 'webp' ? .84 : -.12;
-  let animation = 0;
-  let sceneSize = sizedCanvas(art, scene);
-  let echoSize = sizedCanvas(echoCanvas, backdrop, 1);
+export function mountArtwork(stage) {
+  const screen = stage.querySelector('canvas');
+  const ctx = screen?.getContext('2d');
+  if (!ctx) return;
+  const field = generateField();
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const result = stage.querySelector('#result');
+  let width, height, dpr, destWidth, destHeight, left, top;
+  let frame = 0;
   let pointer;
-  let drift;
-  let modeChange;
-  let drawnTurn;
-  const echoes = [];
 
-  function paintChrome() {
-    const { width, height } = sizedCanvas(surface, chrome);
-    chrome.clearRect(0, 0, width, height);
-    chrome.fillStyle = chromeGrain;
-    chrome.fillRect(0, 0, width, height);
+  function draw(now = performance.now()) {
+    frame = 0;
+    ctx.fillStyle = '#080808';
+    ctx.fillRect(0, 0, width, height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(field, left, top, destWidth, destHeight);
+
+    for (const [ratio, strip, shift] of [[.31, 3, -21], [.52, 5, 22], [.55, 2, -26], [.72, 5, 16]]) {
+      const y = Math.floor(field.height * ratio);
+      ctx.drawImage(field, 0, y, field.width, strip, left + shift, top + y / field.height * destHeight,
+        destWidth, strip / field.height * destHeight);
+    }
+    if (!pointer || reduced.matches) return;
+    const age = now - pointer.time;
+    const strength = move(1 - age / 550, 0, 1);
+    if (!strength) {
+      pointer = undefined;
+      return;
+    }
+    const rect = stage.getBoundingClientRect();
+    const yCenter = (pointer.y - rect.y - top) / destHeight * field.height;
+    for (let i = 0; i < 12; i++) {
+      const y = Math.floor(move(yCenter + (i - 6) * 3, 0, field.height - 5));
+      const shift = strength * (14 + hash(i, 16) * 66) * (i % 2 ? 1 : -1);
+      const sampleX = Math.floor(move((pointer.x - rect.x - left) / destWidth * field.width - 80, 0, field.width - 166));
+      ctx.drawImage(field, sampleX, y, 166, i % 3 + 1,
+        left + sampleX / field.width * destWidth + shift, top + y / field.height * destHeight,
+        166 / field.width * destWidth, (i % 3 + 1) / field.height * destHeight);
+    }
+    frame = requestAnimationFrame(draw);
   }
 
-  function paintScene(now = performance.now()) {
-    const { width, height } = sceneSize;
-    if (!width || !height) return;
-    const fieldWidth = Math.min(280, Math.ceil(width * .54));
-    const fieldHeight = Math.max(1, Math.round(fieldWidth * height / width));
-    if (!fieldPixels || buffer.width !== fieldWidth || buffer.height !== fieldHeight) {
-      buffer.width = fieldWidth;
-      buffer.height = fieldHeight;
-      fieldPixels = copy.createImageData(fieldWidth, fieldHeight);
-      drawnTurn = undefined;
-    }
-    if (drawnTurn !== turn) {
-      heightField(copy, fieldPixels, fieldWidth, fieldHeight, turn);
-      drawnTurn = turn;
-    }
-    scene.imageSmoothingEnabled = false;
-    scene.drawImage(buffer, 0, 0, width, height);
-    if (pointer && drift) {
-      const strength = clamp(1 - (now - pointer.time) / 710, 0, 1);
-      if (strength > 0) {
-        const rect = art.getBoundingClientRect();
-        tear(scene, buffer, width, height, { x: drift.x - rect.x, y: drift.y - rect.y }, strength);
-      }
-    }
-
-    scene.strokeStyle = '#e1ddc550';
-    scene.beginPath();
-    const inset = Math.round(Math.min(width, height) * .073);
-    for (const [x, y, dx, dy] of [
-      [inset, inset, 1, 1], [width - inset, inset, -1, 1],
-      [inset, height - inset, 1, -1], [width - inset, height - inset, -1, -1],
-    ]) {
-      scene.moveTo(x + 9 * dx, y);
-      scene.lineTo(x, y);
-      scene.lineTo(x, y + 9 * dy);
-    }
-    scene.stroke();
-    scene.globalAlpha = .39;
-    scene.fillStyle = sceneGrain;
-    scene.fillRect(0, 0, width, height);
-    scene.globalAlpha = 1;
-  }
-
-  function requestPaint() {
-    if (!animation) animation = requestAnimationFrame(update);
-  }
-
-  function update(now) {
-    animation = 0;
-    if (modeChange) {
-      const elapsed = clamp((now - modeChange.start) / 190, 0, 1);
-      turn = modeChange.from + (modeChange.to - modeChange.from) * (1 - (1 - elapsed) ** 3);
-      if (elapsed === 1) modeChange = undefined;
-    }
-    if (pointer && drift) {
-      drift.x += (pointer.x - drift.x) * .25;
-      drift.y += (pointer.y - drift.y) * .25;
-      if (now - pointer.time > 710) pointer = undefined;
-    }
-    while (echoes.length && now - echoes[0].time >= 860) echoes.shift();
-    paintScene(now);
-    backdrop.clearRect(0, 0, echoSize.width, echoSize.height);
-    if (fieldPixels && echoSize.width && echoSize.height) {
-      for (const echo of echoes) ghost(backdrop, buffer, echo, Math.max(0, now - echo.time), echoSize);
-    }
-    if (modeChange || pointer || echoes.length) requestPaint();
-  }
-
-  new ResizeObserver(paintChrome).observe(surface);
   new ResizeObserver(() => {
-    sceneSize = sizedCanvas(art, scene);
-    paintScene();
-  }).observe(art);
-  new ResizeObserver(() => {
-    echoSize = sizedCanvas(echoCanvas, backdrop, 1);
-    if (echoes.length) requestPaint();
-  }).observe(echoCanvas);
+    width = screen.clientWidth;
+    height = screen.clientHeight;
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    screen.width = Math.round(width * dpr);
+    screen.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const scale = Math.max(width / field.width, height / field.height);
+    destWidth = field.width * scale;
+    destHeight = field.height * scale;
+    left = (width - destWidth) * .55;
+    top = (height - destHeight) * .40;
+    if (!frame) draw();
+  }).observe(screen);
 
-  window.addEventListener('pointermove', (event) => {
-    if (reduceMotion.matches || event.pointerType === 'touch') return;
-    const x = event.clientX, y = event.clientY, time = performance.now();
-    const previous = echoes.at(-1);
-    if (!pointer) drift = { x, y };
-    pointer = { x, y, time };
-    if (!previous || Math.hypot(x - previous.x, y - previous.y) > 62) {
-      echoes.push({
-        x, y, time, seed: Math.round(x + y),
-        dx: previous ? clamp((x - previous.x) * .09, -17, 17) : -11,
-        dy: previous ? clamp((y - previous.y) * .11, -14, 14) : 7,
-      });
-      if (echoes.length > 7) echoes.shift();
-    }
-    requestPaint();
+  stage.closest('.shell').addEventListener('pointermove', event => {
+    if (reduced.matches || event.pointerType === 'touch' || !result.hidden) return;
+    pointer = { x: event.clientX, y: event.clientY, time: performance.now() };
+    if (!frame) frame = requestAnimationFrame(draw);
   }, { passive: true });
 
-  reduceMotion.addEventListener('change', () => {
-    if (!reduceMotion.matches) return;
-    echoes.length = 0;
+  reduced.addEventListener('change', () => {
     pointer = undefined;
-    if (modeChange) {
-      turn = modeChange.to;
-      modeChange = undefined;
-    }
-    requestPaint();
-  });
-
-  form.addEventListener('change', (event) => {
-    if (event.target.name !== 'format') return;
-    const target = format.value === 'webp' ? .84 : -.12;
-    if (reduceMotion.matches || !sceneSize.width) {
-      turn = target;
-      modeChange = undefined;
-    } else {
-      modeChange = { start: performance.now(), from: turn, to: target };
-    }
-    requestPaint();
+    if (frame) cancelAnimationFrame(frame);
+    draw();
   });
 }
