@@ -165,7 +165,8 @@ function showResult(value) {
     ? `${(value.size / 1_000_000).toFixed(1)} MB`
     : `${Math.max(1, Math.round(value.size / 1000))} KB`;
   share.hidden = !navigator.share || !navigator.canShare?.({ files: [value] });
-  copy.hidden = !navigator.clipboard?.write || !globalThis.ClipboardItem?.supports?.(value.type);
+  copy.hidden = !navigator.clipboard?.write || !globalThis.ClipboardItem ||
+    (value.type !== 'image/gif' && !ClipboardItem.supports?.(value.type));
   const help = byId('result-help');
   help.textContent = sticker
     ? 'For a native WhatsApp sticker, import the animated WebP in a compatible sticker app.'
@@ -304,12 +305,26 @@ share.addEventListener('click', async () => {
     if (error?.name !== 'AbortError') report('Sharing failed. You can save the animated file.', undefined, true);
   }
 });
+function gifClipboardMarkup(gif) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Blob([
+      `<img src="${reader.result}" alt="Animated GIF">`,
+    ], { type: 'text/html' }));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(gif);
+  });
+}
+
 copy.addEventListener('click', async () => {
-  if (!output) return;
+  const value = output;
+  if (!value) return;
+  const useMarkup = value.type === 'image/gif' && !ClipboardItem.supports?.(value.type);
   try {
-    await navigator.clipboard.write([new ClipboardItem({ [output.type]: output })]);
-    report('Animation copied.');
+    const payload = useMarkup ? { 'text/html': gifClipboardMarkup(value) } : { [value.type]: value };
+    await navigator.clipboard.write([new ClipboardItem(payload)]);
+    if (output === value) report(useMarkup ? 'GIF copied for apps that accept rich paste.' : 'Animation copied.');
   } catch {
-    report('Copy failed. Use Share or Save to keep the animation.', undefined, true);
+    if (output === value) report('Copy failed. Use Share or Save to keep the animation.', undefined, true);
   }
 });

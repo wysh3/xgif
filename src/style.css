@@ -7,7 +7,7 @@
   --raised: #191919;
   --hint: #aaa;
   --frame: #fff;
-  --frame-border: 1px solid var(--frame);
+  --frame-border: 1px solid #767676;
   --control-size: 44px;
   --corner: 4px;
 }
