@@ -11,7 +11,8 @@
     "deploy:resolver": "cd worker/pages && wrangler pages deploy --branch main --force"
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "0.12.15"
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "@fontsource/ibm-plex-mono": "5.2.7"
   },
   "devDependencies": {
     "@types/node": "22.20.7",

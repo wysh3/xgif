@@ -1,11 +1,9 @@
+import '@fontsource/ibm-plex-mono/latin-400.css';
+import '@fontsource/ibm-plex-mono/latin-500.css';
 import './style.css';
-import { setAsciiText } from './ascii-type.js';
 import { fetchVideo, resolveVideo, videoLimit } from './source.js';
 
 const byId = id => document.getElementById(id);
-document.querySelectorAll('[data-ascii]').forEach(label => {
-  if (label.textContent) setAsciiText(label, label.textContent, label.dataset.ascii || label.textContent);
-});
 const form = byId('converter');
 const workspace = document.querySelector('.workspace');
 const controls = byId('controls');
@@ -25,6 +23,9 @@ const progress = byId('progress');
 const working = byId('working');
 const convert = byId('convert');
 const save = byId('save');
+const paste = byId('paste');
+const chooseVideo = byId('choose-video');
+const clear = byId('remove-file');
 
 let localFile;
 let resolved;
@@ -74,17 +75,15 @@ function resetSource() {
 
 function updateInput() {
   const hasSource = Boolean(localFile || post.value.trim());
-  const action = hasSource ? 'Convert' : 'Paste & convert';
-  if (convert.getAttribute('aria-label') !== action) {
-    setAsciiText(byId('convert-text'), hasSource ? 'Convert' : 'Paste');
-    convert.setAttribute('aria-label', action);
-  }
+  convert.hidden = !hasSource;
+  clear.hidden = !hasSource;
+  clear.setAttribute('aria-label', localFile ? 'Remove video' : 'Clear link');
   const name = byId('file-name');
   name.textContent = localFile?.name || '';
   name.title = name.textContent;
   name.hidden = !localFile;
+  post.labels[0].textContent = localFile ? 'Video file' : 'X post link';
   post.hidden = Boolean(localFile);
-  byId('remove-file').hidden = !localFile;
 }
 
 function selectFile(candidate) {
@@ -100,23 +99,30 @@ function selectFile(candidate) {
   convert.focus();
 }
 
-async function readClipboard() {
+async function pasteLink() {
+  if (job || readingClipboard) return;
   readingClipboard = true;
-  convert.disabled = true;
+  paste.disabled = true;
+  chooseVideo.disabled = true;
   try {
-    const value = (await navigator.clipboard.readText()).trim();
-    if (!value) throw new Error('Empty clipboard');
+    const contents = await navigator.clipboard.readText();
+    const value = contents.match(/https?:\/\/[^\s<>]+/i)?.[0];
+    if (!value) throw new Error('Clipboard has no link');
+    const changed = Boolean(localFile || post.value.trim() !== value);
+    localFile = undefined;
     post.value = value;
-    resetSource();
+    if (changed) resetSource();
     updateInput();
   } catch {
     report('Paste an X link into the field to continue.');
-    post.focus();
+    (localFile ? convert : post).focus();
+    return;
   } finally {
     readingClipboard = false;
-    convert.disabled = false;
+    paste.disabled = false;
+    chooseVideo.disabled = false;
   }
-  return post.value.trim();
+  form.requestSubmit();
 }
 
 async function acquireVideo(input, signal) {
@@ -151,7 +157,7 @@ function showResult(value) {
   save.href = objectUrl;
   save.download = value.name;
   const sticker = value.type === 'image/webp';
-  setAsciiText(byId('result-name'), sticker ? 'Animated WebP sticker' : 'Animated GIF', sticker ? 'WebP sticker' : 'Animated GIF');
+  byId('result-name').textContent = sticker ? 'animated WebP sticker' : 'animated GIF';
   byId('result-size').textContent = value.size >= 1_000_000
     ? `${(value.size / 1_000_000).toFixed(1)} MB`
     : `${Math.max(1, Math.round(value.size / 1000))} KB`;
@@ -171,14 +177,24 @@ optionsButton.addEventListener('click', () => setOptions(true));
 byId('close-options').addEventListener('click', () => setOptions(false));
 options.addEventListener('close', () => optionsButton.setAttribute('aria-expanded', 'false'));
 trimButton.addEventListener('click', () => setTrim(trim.hidden));
-byId('choose-video').addEventListener('click', () => file.click());
+chooseVideo.addEventListener('click', () => file.click());
+paste.addEventListener('click', pasteLink);
+document.addEventListener('keydown', event => {
+  if (event.defaultPrevented || options.open || job || readingClipboard) return;
+  if (event.key === '/' && !event.altKey && !event.metaKey && !event.ctrlKey &&
+      !localFile && !event.target.closest('input, textarea, select, [contenteditable]')) {
+    event.preventDefault();
+    post.focus();
+  }
+});
 file.addEventListener('change', () => {
   const next = file.files[0];
   file.value = '';
   if (next) selectFile(next);
 });
-byId('remove-file').addEventListener('click', () => {
+clear.addEventListener('click', () => {
   localFile = undefined;
+  post.value = '';
   resetSource();
   updateInput();
   post.focus();
@@ -187,6 +203,7 @@ post.addEventListener('input', () => {
   const samePost = !localFile && resolved?.input === post.value.trim();
   localFile = undefined;
   if (!samePost) resetSource();
+  post.removeAttribute('aria-invalid');
   updateInput();
 });
 
@@ -224,7 +241,7 @@ byId('cancel').addEventListener('click', () => job?.abort());
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (job || readingClipboard) return;
-  const input = post.value.trim() || (localFile ? '' : await readClipboard());
+  const input = post.value.trim();
   if ((!localFile && !input) || !form.reportValidity()) return;
   resetResult();
 
@@ -234,6 +251,9 @@ form.addEventListener('submit', async event => {
   const start = byId('start').valueAsNumber;
   const length = byId('length').valueAsNumber;
   controls.disabled = true;
+  optionsButton.disabled = true;
+  chooseVideo.disabled = true;
+  convert.firstElementChild.textContent = 'working';
   working.hidden = false;
   try {
     const [video, encoder] = await Promise.all([acquireVideo(input, current.signal), import('./convert.js')]);
@@ -255,6 +275,9 @@ form.addEventListener('submit', async event => {
     const canceled = current.signal.aborted;
     working.hidden = true;
     controls.disabled = false;
+    optionsButton.disabled = false;
+    chooseVideo.disabled = false;
+    convert.firstElementChild.textContent = 'convert';
     job = undefined;
     if (canceled) convert.focus();
   }
@@ -277,9 +300,3 @@ copy.addEventListener('click', async () => {
     report('Copy failed. Use Share or Save to keep the animation.', undefined, true);
   }
 });
-
-const loadArtwork = () => {
-  import('./artwork.js').then(({ mountArtwork }) => mountArtwork(byId('art'))).catch(() => {});
-};
-if ('requestIdleCallback' in window) window.requestIdleCallback(loadArtwork, { timeout: 600 });
-else window.requestAnimationFrame(() => window.setTimeout(loadArtwork, 0));

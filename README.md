@@ -28,3 +28,7 @@ In a second terminal, run `npm run dev` and open the Vite URL. The local video p
 - X lookup relies on its public embed endpoint, which can change or omit media. The local picker accepts a video without uploading it.
 
 `npm test` checks the resolver, streaming input limits, and animated WebP validation. `npm run build` creates the static site in `dist/`.
+
+## Interface credits
+
+The xgif layout and dark theme adapt [Cobalt Web by imputnet and its contributors](https://github.com/imputnet/cobalt/tree/a636575/web). The adapted frontend layout and styles are shared under [CC BY-NC-SA 4.0](public/licenses/cobalt-web.txt). xgif uses its own branding and adapts the controls and navigation for GIF and sticker conversion. [IBM Plex Mono](public/licenses/ibm-plex-mono.txt) is distributed under the SIL Open Font License.
