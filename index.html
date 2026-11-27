@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#070709">
   <meta name="description" content="Convert public X videos to GIFs and animated WebP stickers on your device.">
   <meta property="og:title" content="xgif">
   <meta property="og:description" content="Make looping GIFs and animated stickers from X videos.">
@@ -17,7 +17,6 @@
   <link rel="canonical" href="https://wysh3.github.io/xgif/">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-  <link rel="license" href="./licenses/cobalt-web.txt">
   <title>xgif</title>
 </head>
 <body>
@@ -58,13 +57,13 @@
             <button id="convert" class="convert-button" type="submit" aria-label="Convert" hidden><span>convert</span></button>
           </div>
 
-          <div class="action-row">
+          <div class="conversion-actions">
             <fieldset class="formats">
               <legend class="visually-hidden">Output format</legend>
-              <label><input type="radio" name="format" value="gif" checked><span><svg class="icon gif" aria-hidden="true"><use href="#icon-loop"/></svg>gif</span></label>
-              <label><input type="radio" name="format" value="webp"><span><svg class="icon sticker" aria-hidden="true"><use href="#icon-sticker"/></svg>sticker</span></label>
+              <label><input type="radio" name="format" value="gif" checked><span><svg class="icon" aria-hidden="true"><use href="#icon-loop"/></svg>gif</span></label>
+              <label><input type="radio" name="format" value="webp"><span><svg class="icon" aria-hidden="true"><use href="#icon-sticker"/></svg>sticker</span></label>
             </fieldset>
-            <button id="paste" class="button" type="button"><svg class="icon clipboard" aria-hidden="true"><use href="#icon-paste"/></svg><span>paste &amp; convert</span></button>
+            <button id="paste" class="button" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-paste"/></svg><span>paste &amp; convert</span></button>
           </div>
           <label id="clip-picker" class="clip-picker" hidden>video in post <select id="clip"></select></label>
           <input id="file" type="file" accept="video/*,.mov,.mkv" hidden>
