@@ -20,7 +20,6 @@ const formatInput = form.elements.namedItem('format');
 const result = byId('result');
 const preview = byId('preview');
 const share = byId('share');
-const copy = byId('copy');
 const resultStatus = byId('result-status');
 const status = byId('status');
 const progress = byId('progress');
@@ -130,19 +129,11 @@ async function pasteLink() {
   readingClipboard = true;
   paste.disabled = true;
   chooseVideo.disabled = true;
-  let copyRequest;
   try {
-    const read = navigator.clipboard.readText();
-    copyRequest = prepareAutoCopy();
-    const value = pastedPost(await read);
+    const value = pastedPost(await navigator.clipboard.readText());
     if (!value) throw new Error('Clipboard has no X post link');
-    if (copyRequest && formatInput.value !== 'gif') {
-      copyRequest.finish();
-      copyRequest = undefined;
-    }
     setPastedPost(value);
   } catch {
-    copyRequest?.finish();
     report('Paste an X link into the field to continue.');
     (localFile ? convert : post).focus();
     return;
@@ -151,7 +142,7 @@ async function pasteLink() {
     paste.disabled = false;
     chooseVideo.disabled = false;
   }
-  void startConversion(copyRequest);
+  void startConversion();
 }
 
 async function acquireVideo(input, signal) {
@@ -191,11 +182,7 @@ function showResult(value) {
     ? `${(value.size / 1_000_000).toFixed(1)} MB`
     : `${Math.max(1, Math.round(value.size / 1000))} KB`;
   share.hidden = !navigator.share || !navigator.canShare?.({ files: [value] });
-  share.lastElementChild.textContent = sticker ? 'share sticker' : 'share GIF';
   save.classList.toggle('primary', share.hidden);
-  const type = clipboardFormat(value.type);
-  copy.hidden = !type;
-  copy.textContent = type === 'text/html' ? 'copy for rich paste' : 'copy';
   const help = byId('result-help');
   help.textContent = sticker
     ? 'For a native WhatsApp sticker, import the animated WebP in a compatible sticker app.'
@@ -240,12 +227,12 @@ post.addEventListener('input', () => {
   updateInput();
 });
 post.addEventListener('paste', event => {
-  if (job || readingClipboard || !canAutoCopy()) return;
+  if (event.defaultPrevented || job || readingClipboard || formatInput.value !== 'gif') return;
   const value = pastedPost(event.clipboardData?.getData('text/plain') ?? '');
   if (!value) return;
   event.preventDefault();
   setPastedPost(value);
-  void startConversion(prepareAutoCopy());
+  void startConversion();
 });
 
 const hasFile = event => Array.from(event.dataTransfer.types).includes('Files');
@@ -275,19 +262,18 @@ form.addEventListener('invalid', event => {
   }
 }, true);
 form.addEventListener('change', event => {
-  if (event.target.name === 'format') updateFormatControls();
+  if (event.target.name === 'format') updateTrimLimit();
   if (event.target === clip || event.target.name === 'format' || trim.contains(event.target)) resetResult();
 });
 
-function updateFormatControls() {
+function updateTrimLimit() {
   const sticker = formatInput.value === 'webp';
   lengthInput.max = sticker ? String(stickerMaxSeconds) : '';
   byId('trim-help').textContent = sticker
     ? `Leave length blank to use up to ${stickerMaxSeconds} seconds from the start time.`
     : 'Leave length blank to use the rest of the source.';
-  paste.lastElementChild.textContent = canAutoCopy() ? 'paste & copy GIF' : 'paste & convert';
 }
-updateFormatControls();
+updateTrimLimit();
 
 byId('cancel').addEventListener('click', () => job?.abort());
 form.addEventListener('submit', event => {
@@ -295,12 +281,9 @@ form.addEventListener('submit', event => {
   void startConversion();
 });
 
-async function startConversion(copyRequest) {
+async function startConversion() {
   const input = post.value.trim();
-  if (job || readingClipboard || (!localFile && !input) || !form.reportValidity()) {
-    copyRequest?.finish();
-    return;
-  }
+  if (job || readingClipboard || (!localFile && !input) || !form.reportValidity()) return;
   resetResult();
 
   const current = new AbortController();
@@ -320,10 +303,6 @@ async function startConversion(copyRequest) {
     current.signal.throwIfAborted();
     report('');
     showResult(animated);
-    if (copyRequest) {
-      copyRequest.finish(animated);
-      void reportCopyResult(animated, copyRequest.type, copyRequest.done);
-    }
   } catch (error) {
     if (current.signal.aborted) {
       report('Conversion canceled.');
@@ -334,7 +313,6 @@ async function startConversion(copyRequest) {
       report(detail, undefined, true);
     }
   } finally {
-    copyRequest?.finish();
     const canceled = current.signal.aborted;
     working.hidden = true;
     controls.disabled = false;
@@ -355,66 +333,4 @@ share.addEventListener('click', async () => {
   } catch (error) {
     if (output === value && error?.name !== 'AbortError') resultStatus.textContent = 'Sharing failed. Use Save to keep the animated file.';
   }
-});
-
-function clipboardFormat(mime) {
-  if (!navigator.clipboard?.write || !globalThis.ClipboardItem) return;
-  if (ClipboardItem.supports?.(mime)) return mime;
-  if (mime === 'image/gif' && ClipboardItem.supports?.('text/html') !== false) return 'text/html';
-}
-
-function canAutoCopy() {
-  return formatInput.value === 'gif' && Boolean(clipboardFormat('image/gif'));
-}
-
-function prepareAutoCopy() {
-  if (!canAutoCopy()) return;
-  const type = clipboardFormat('image/gif');
-  let finish;
-  const file = new Promise(resolve => { finish = resolve; });
-  // Start the write while the paste gesture is active, before conversion finishes.
-  return { type, finish, done: writeClipboard(type, file) };
-}
-
-function gifClipboardMarkup(gif) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(new Blob([
-      `<img src="${reader.result}" alt="Animated GIF">`,
-    ], { type: 'text/html' }));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(gif);
-  });
-}
-
-async function writeClipboard(type, file) {
-  const payload = file.then(value => {
-    if (!value) throw new Error('No converted file');
-    return type === 'text/html' ? gifClipboardMarkup(value) : value;
-  });
-  // The browser can reject the write before it reads the pending payload.
-  void payload.catch(() => {});
-  try {
-    await navigator.clipboard.write([new ClipboardItem({ [type]: payload })]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function reportCopyResult(value, type, done) {
-  const copied = await done;
-  if (output !== value) return;
-  const fallback = share.hidden ? 'Use Save to send the file.' : 'Use Share to send the original file.';
-  if (!copied) resultStatus.textContent = `Could not copy the animation. ${fallback}`;
-  else resultStatus.textContent = type === 'text/html' ? `Copied for rich paste. ${fallback}` : 'Animation copied.';
-}
-
-copy.addEventListener('click', () => {
-  const value = output;
-  if (!value) return;
-  const type = clipboardFormat(value.type);
-  if (!type) return;
-  resultStatus.textContent = '';
-  void reportCopyResult(value, type, writeClipboard(type, Promise.resolve(value)));
 });
