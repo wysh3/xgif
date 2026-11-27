@@ -1,34 +1,9 @@
 # xgif
 
-Convert public X videos and local clips into looping GIFs or animated WebP stickers. Conversion takes place on the device. The Cloudflare Pages resolver returns public video URLs, and the browser fetches those clips directly from X.
+I wanted to turn a clip from X into a GIF without opening a video editor. Paste a post or open a video, pick GIF or Sticker, and save it. The conversion runs in your browser.
 
-## Run locally
+Leave the trim length blank for the rest of the clip. Stickers stop at 10 seconds.
 
-Use Node.js 22.12 or later.
+To run it locally, use Node 22.12+ and run `npm ci`, then `npm run dev`. Run `npm run dev:worker` in another terminal if you want X links to work.
 
-```sh
-npm ci
-npm run dev:worker
-```
-
-In a second terminal, run `npm run dev` and open the Vite URL. The local video picker also works with only the frontend running.
-
-## Deploy
-
-1. Run `npx wrangler login` and select the Cloudflare account that owns the xgif Pages project. Verify with `npx wrangler whoami`.
-2. Set `ALLOWED_ORIGIN` in `worker/pages/wrangler.jsonc` to the GitHub Pages origin (scheme and hostname, without the repo path). Run `npm run deploy:resolver`. The production resolver is `https://xgif-api.pages.dev/api/resolve`.
-3. Set the GitHub Actions repository variable `VITE_RESOLVER_URL` to the resolver URL. In **Settings → Pages**, set the source to **GitHub Actions**.
-4. Push to `main` or run the Pages workflow manually. With an unset resolver URL, the deployed site can still convert local files.
-
-## Sharing and compatibility
-
-- **Share** appears where the device can hand the output file to its native share menu. **Copy** appears where the clipboard supports the exact animated file type. **Save** is available on all supported browsers.
-- WebP stickers use a 512 × 512 transparent canvas and stay within WhatsApp’s 500 KB size limit. xgif checks for timed animation frames before offering a sticker file. To send one as a native WhatsApp sticker, import the generated WebP using a compatible sticker app.
-- The browser loads the pinned [single-threaded FFmpeg engine](https://github.com/ffmpegwasm/ffmpeg.wasm) from jsDelivr when conversion starts (roughly 32 MB uncompressed). The browser can reuse the encoder and the current source for subsequent conversions. Cancel stops the current request or encoding job. Source clips are limited to 40 MiB and outputs to 10 seconds.
-- X lookup relies on its public embed endpoint, which can change or omit media. The local picker accepts a video without uploading it.
-
-`npm test` checks the resolver, streaming input limits, and animated WebP validation. `npm run build` creates the static site in `dist/`.
-
-## Interface credits
-
-The xgif layout and dark theme adapt [Cobalt Web by imputnet and its contributors](https://github.com/imputnet/cobalt/tree/a636575/web). The adapted frontend layout and styles are shared under [CC BY-NC-SA 4.0](public/licenses/cobalt-web.txt). xgif uses its own branding and adapts the controls and navigation for GIF and sticker conversion. [IBM Plex Mono](public/licenses/ibm-plex-mono.txt) is distributed under the SIL Open Font License.
+The interface started from [Cobalt Web](https://github.com/imputnet/cobalt/tree/a636575/web). I adapted it for xgif. [Cobalt’s license](public/licenses/cobalt-web.txt) · [IBM Plex Mono’s license](public/licenses/ibm-plex-mono.txt).

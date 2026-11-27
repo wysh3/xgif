@@ -1,5 +1,5 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { hasAnimatedWebPFrames } from './sticker.js';
+import { hasAnimatedWebPFrames, stickerMaxSeconds } from './sticker.js';
 
 const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
 const stickerLimit = 500_000;
@@ -53,7 +53,9 @@ async function encode(engine, file, format, start, length, report, signal) {
   const inputBytes = new Uint8Array(await file.arrayBuffer());
   signal.throwIfAborted();
   await engine.writeFile('input', inputBytes);
-  const input = ['-ss', String(start), '-i', 'input', '-t', String(length), '-an', '-map', '0:v:0'];
+  const input = ['-ss', String(start), '-i', 'input', '-an', '-map', '0:v:0'];
+  const duration = format === 'gif' ? length : Math.min(length ?? stickerMaxSeconds, stickerMaxSeconds);
+  if (duration != null) input.push('-t', String(duration));
   if (format === 'gif') {
     report('Making your GIF…');
     const filter = 'fps=12,scale=480:480:force_original_aspect_ratio=decrease:flags=lanczos,setsar=1,split[a][b];[a]palettegen[p];[b][p]paletteuse';

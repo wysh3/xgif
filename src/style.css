@@ -42,7 +42,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
 .utilities { display: flex; gap: 3px; align-items: center; }
 .tool-button { display: inline-flex; justify-content: center; align-items: center; gap: 7px; min-height: 44px; padding: 0 9px; color: #bbb; border: 0; border-radius: 9px; background: transparent; text-decoration: none; white-space: nowrap; }
 .tool-button.icon-only { width: 44px; padding: 0; }
-.workspace { position: relative; flex: 1; padding: 12px 16px max(16px, env(safe-area-inset-bottom)); display: grid; grid-template-rows: 1fr auto; justify-items: center; min-width: 0; }
+.workspace { position: relative; flex: 1; padding: 12px 16px max(16px, env(safe-area-inset-bottom)); display: grid; place-items: center; min-width: 0; }
 .converter-view { align-self: center; width: min(100%, 640px); display: grid; justify-items: stretch; padding: 24px 0 56px; min-width: 0; }
 h1 { margin: 0 0 22px; font-size: clamp(21px, 4.8vw, 28px); line-height: 1.2; font-weight: 500; letter-spacing: -.045em; text-wrap: balance; }
 .input-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
@@ -89,6 +89,7 @@ dialog::backdrop { background: #0009; }
 .setting-row[aria-expanded=true] span { transform: rotate(90deg); }
 .trim-options { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; padding: 11px; border-top: 1px solid var(--line); }
 .trim-options label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+#trim-help { grid-column: 1 / -1; margin: 2px 0 0; color: var(--muted); font-size: 12px; }
 .activity:has(#status:not(:empty), #working:not([hidden])) { margin-top: 9px; }
 #status, #result-help { margin: 0; color: var(--muted); font-size: 12px; text-wrap: pretty; }
 #status[data-error] { padding: 8px 10px; background: #251514; color: #ffbab4; border-radius: 8px; }
@@ -103,8 +104,6 @@ progress { flex: 1; min-width: 0; height: 5px; accent-color: #e1e1e1; }
 #result-help { margin: 8px 2px 2px; }
 .drop-hint { display: none; position: absolute; z-index: 3; inset: 12px; place-items: center; border: 1px dashed #a0a0a0; border-radius: 14px; background: #000e; pointer-events: none; }
 .workspace[data-drop] .drop-hint { display: grid; }
-footer { color: var(--muted); text-align: center; font-size: 12px; }
-footer a { text-underline-offset: 2px; }
 
 @media (hover: hover) {
   .tool-button:hover, .button:hover, .formats input:not(:checked) + span:hover, .clear-button:hover, .convert-button:hover, .setting-row:hover { background: var(--hover); }
@@ -117,7 +116,6 @@ footer a { text-underline-offset: 2px; }
   .button, .formats label > span { min-height: 44px; padding: 0 9px; }
   .command, #post { min-height: 44px; }
   #post { font-size: 16px; }
-  footer { font-size: 11px; }
 }
 @media (max-width: 370px) {
   .tool-button { width: 44px; padding: 0; }

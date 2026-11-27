@@ -2,6 +2,7 @@ import '@fontsource/ibm-plex-mono/latin-400.css';
 import '@fontsource/ibm-plex-mono/latin-500.css';
 import './style.css';
 import { fetchVideo, resolveVideo, videoLimit } from './source.js';
+import { stickerMaxSeconds } from './sticker.js';
 
 const byId = id => document.getElementById(id);
 const form = byId('converter');
@@ -14,6 +15,8 @@ const options = byId('options');
 const optionsButton = byId('toggle-options');
 const trim = byId('trim-options');
 const trimButton = byId('toggle-trim');
+const lengthInput = byId('length');
+const formatInput = form.elements.namedItem('format');
 const result = byId('result');
 const preview = byId('preview');
 const share = byId('share');
@@ -234,8 +237,18 @@ form.addEventListener('invalid', event => {
   }
 }, true);
 form.addEventListener('change', event => {
+  if (event.target.name === 'format') updateTrimLimit();
   if (event.target === clip || event.target.name === 'format' || trim.contains(event.target)) resetResult();
 });
+
+function updateTrimLimit() {
+  const sticker = formatInput.value === 'webp';
+  lengthInput.max = sticker ? String(stickerMaxSeconds) : '';
+  byId('trim-help').textContent = sticker
+    ? `Leave length blank to use up to ${stickerMaxSeconds} seconds from the start time.`
+    : 'Leave length blank to use the rest of the source.';
+}
+updateTrimLimit();
 
 byId('cancel').addEventListener('click', () => job?.abort());
 form.addEventListener('submit', async event => {
@@ -247,9 +260,9 @@ form.addEventListener('submit', async event => {
 
   const current = new AbortController();
   job = current;
-  const format = form.elements.namedItem('format').value;
+  const format = formatInput.value;
   const start = byId('start').valueAsNumber;
-  const length = byId('length').valueAsNumber;
+  const length = lengthInput.value === '' ? undefined : lengthInput.valueAsNumber;
   controls.disabled = true;
   optionsButton.disabled = true;
   chooseVideo.disabled = true;

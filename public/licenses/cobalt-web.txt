@@ -1,3 +1,7 @@
+xgif adapts the Cobalt Web layout and dark theme by imputnet and contributors.
+Source: https://github.com/imputnet/cobalt/tree/a636575/web
+The layout and controls were modified for xgif. The adapted styles are licensed as follows.
+
 Attribution-NonCommercial-ShareAlike 4.0 International
 
 =======================================================================

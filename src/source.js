@@ -2,7 +2,7 @@ const resolver = import.meta.env?.VITE_RESOLVER_URL || (import.meta.env?.DEV ? '
 export const videoLimit = 40 * 1024 * 1024;
 
 export async function resolveVideo(post, signal) {
-  if (!resolver) throw new Error('X link lookup is unavailable. Open a local video in Options.');
+  if (!resolver) throw new Error('X link lookup is unavailable. Use Open file to convert a local video.');
   const endpoint = new URL(resolver, location.href);
   endpoint.searchParams.set('url', post);
   const response = await fetch(endpoint, { signal: AbortSignal.any([signal, AbortSignal.timeout(12_000)]) });

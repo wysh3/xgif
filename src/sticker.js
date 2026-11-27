@@ -1,3 +1,5 @@
+export const stickerMaxSeconds = 10;
+
 export function hasAnimatedWebPFrames(bytes) {
   if (bytes.length < 12) return false;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
