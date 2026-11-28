@@ -1,17 +1,4 @@
-const postHosts = new Set(['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com']);
-
-function parsePost(value) {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' || !postHosts.has(url.hostname) || url.port || url.username || url.password) {
-      return null;
-    }
-    const match = url.pathname.match(/^\/(?:[\w]{1,15}|i\/web)\/status\/([1-9]\d{0,19})(?:\/video\/([1-9]\d?))?\/?$/);
-    return match && { id: match[1], index: match[2] && Number(match[2]) };
-  } catch {
-    return null;
-  }
-}
+import { parsePost } from '../src/post.js';
 
 function mp4Variant(media) {
   if (!['video', 'animated_gif'].includes(media?.type)) return null;
@@ -62,6 +49,9 @@ export async function handleRequest(request, env, fetchUpstream = fetch) {
     }
 
     const data = await response.json();
+    if (data?.__typename === 'TweetTombstone') {
+      return respond({ error: 'This post is unavailable through X’s public embeds. Use Open file if you have the clip.' }, 404);
+    }
     const media = Array.isArray(data?.mediaDetails) ? data.mediaDetails : [];
     const videos = media.flatMap((item, offset) => {
       const url = mp4Variant(item);

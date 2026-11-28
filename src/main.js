@@ -1,6 +1,7 @@
 import '@fontsource/ibm-plex-mono/latin-400.css';
 import '@fontsource/ibm-plex-mono/latin-500.css';
 import './style.css';
+import { pastedPost } from './post.js';
 import { fetchVideo, resolveVideo, videoLimit } from './source.js';
 import { stickerMaxSeconds } from './sticker.js';
 
@@ -101,19 +102,6 @@ function selectFile(candidate) {
   updateInput();
   setOptions(false);
   convert.focus();
-}
-
-function pastedPost(text) {
-  const link = text.match(/https:\/\/[^\s<>]+/ig)?.find(value => {
-    try {
-      const url = new URL(value);
-      return /^(?:(?:www\.)?x\.com|(?:www\.|mobile\.)?twitter\.com)$/.test(url.host) &&
-        /^\/(?:[\w]{1,15}|i\/web)\/status\/\d+(?:\/video\/\d+)?\/?$/.test(url.pathname);
-    } catch {
-      return false;
-    }
-  });
-  return link;
 }
 
 function setPastedPost(value) {
